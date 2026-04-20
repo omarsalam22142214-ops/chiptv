@@ -1,7 +1,7 @@
 <html lang="ar" dir="rtl"><head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>X-Stream Pro - Max Edition</title>
+    <title>X-Stream Pro - No Storage</title>
     
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     
@@ -84,7 +84,6 @@
         .btn-cancel { background: #555; display: none; }
         .btn-cancel:hover { background: #777; }
         
-        /* زرار الرفع المميز */
         .upload-wrapper { display: flex; gap: 10px; }
         .btn-upload { background: #4caf50; display: flex; align-items: center; gap: 5px;}
         .btn-upload:hover { background: #388e3c; }
@@ -116,7 +115,6 @@
             <div class="upload-wrapper">
                 <input type="file" id="m3u-upload" accept=".m3u,.m3u8,.txt" style="display: none;" onchange="handleFileUpload(event)">
                 <button class="btn btn-upload" onclick="document.getElementById('m3u-upload').click()">📁 استيراد ملف M3U</button>
-                
                 <button class="btn btn-clear" onclick="clearAllChannels()">🧹 مسح الكل</button>
             </div>
         </div>
@@ -136,18 +134,18 @@
                     <span class="channel-count" id="channel-count">408 قناة</span>
                 </div>
                 <ul class="channel-list" id="playlist"><li class="channel-item">
-                    <div class="channel-info" onclick="playChannel('http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/87164', 'WWE FEED MARVEL  SD', this)">
+                    <div class="channel-info" onclick="playChannel('http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/87164', 'WWE FEED MARVEL SD', this)">
                         <img src="http://tayaara.store:80/images/marvel/1745087188179.jpg" class="channel-logo" alt="logo" onerror="this.src='https://via.placeholder.com/40/111/fff?text=TV'">
-                        <span class="channel-name">WWE FEED MARVEL  SD</span>
+                        <span class="channel-name">WWE FEED MARVEL SD</span>
                     </div>
                     <div class="channel-actions">
                         <button class="btn-edit" title="تعديل" onclick="editChannel(0)">✏️</button>
                         <button class="btn-delete" title="حذف" onclick="deleteChannel(0)">🗑️</button>
                     </div>
                 </li><li class="channel-item">
-                    <div class="channel-info" onclick="playChannel('http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/102808', 'WWE FEED MARVEL  HD', this)">
+                    <div class="channel-info" onclick="playChannel('http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/102808', 'WWE FEED MARVEL HD', this)">
                         <img src="http://tayaara.store:80/images/marvel/1745087204214.jpg" class="channel-logo" alt="logo" onerror="this.src='https://via.placeholder.com/40/111/fff?text=TV'">
-                        <span class="channel-name">WWE FEED MARVEL  HD</span>
+                        <span class="channel-name">WWE FEED MARVEL HD</span>
                     </div>
                     <div class="channel-actions">
                         <button class="btn-edit" title="تعديل" onclick="editChannel(1)">✏️</button>
@@ -163,54 +161,54 @@
                         <button class="btn-delete" title="حذف" onclick="deleteChannel(2)">🗑️</button>
                     </div>
                 </li><li class="channel-item">
-                    <div class="channel-info" onclick="playChannel('http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/395572', 'we can  wwe', this)">
+                    <div class="channel-info" onclick="playChannel('http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/395572', 'We Can WWE', this)">
                         <img src="http://tayaara.store:80/images/marvel/1719684640353.jpg" class="channel-logo" alt="logo" onerror="this.src='https://via.placeholder.com/40/111/fff?text=TV'">
-                        <span class="channel-name">we can  wwe</span>
+                        <span class="channel-name">We Can WWE</span>
                     </div>
                     <div class="channel-actions">
                         <button class="btn-edit" title="تعديل" onclick="editChannel(3)">✏️</button>
                         <button class="btn-delete" title="حذف" onclick="deleteChannel(3)">🗑️</button>
                     </div>
                 </li><li class="channel-item">
-                    <div class="channel-info" onclick="playChannel('http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/395571', 'IMDB  WWE 1', this)">
+                    <div class="channel-info" onclick="playChannel('http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/395571', 'IMDB WWE 1', this)">
                         <img src="http://tayaara.store:80/images/marvel/1718615502226.jpg" class="channel-logo" alt="logo" onerror="this.src='https://via.placeholder.com/40/111/fff?text=TV'">
-                        <span class="channel-name">IMDB  WWE 1</span>
+                        <span class="channel-name">IMDB WWE 1</span>
                     </div>
                     <div class="channel-actions">
                         <button class="btn-edit" title="تعديل" onclick="editChannel(4)">✏️</button>
                         <button class="btn-delete" title="حذف" onclick="deleteChannel(4)">🗑️</button>
                     </div>
                 </li><li class="channel-item">
-                    <div class="channel-info" onclick="playChannel('http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/395570', 'IMDB   WWE', this)">
+                    <div class="channel-info" onclick="playChannel('http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/395570', 'IMDB WWE', this)">
                         <img src="http://tayaara.store:80/images/marvel/1718615512213.jpg" class="channel-logo" alt="logo" onerror="this.src='https://via.placeholder.com/40/111/fff?text=TV'">
-                        <span class="channel-name">IMDB   WWE</span>
+                        <span class="channel-name">IMDB WWE</span>
                     </div>
                     <div class="channel-actions">
                         <button class="btn-edit" title="تعديل" onclick="editChannel(5)">✏️</button>
                         <button class="btn-delete" title="حذف" onclick="deleteChannel(5)">🗑️</button>
                     </div>
                 </li><li class="channel-item">
-                    <div class="channel-info" onclick="playChannel('http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/395569', 'Majestic  WWE', this)">
+                    <div class="channel-info" onclick="playChannel('http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/395569', 'Majestic WWE', this)">
                         <img src="http://tayaara.store:80/images/marvel/1716990099438.jpg" class="channel-logo" alt="logo" onerror="this.src='https://via.placeholder.com/40/111/fff?text=TV'">
-                        <span class="channel-name">Majestic  WWE</span>
+                        <span class="channel-name">Majestic WWE</span>
                     </div>
                     <div class="channel-actions">
                         <button class="btn-edit" title="تعديل" onclick="editChannel(6)">✏️</button>
                         <button class="btn-delete" title="حذف" onclick="deleteChannel(6)">🗑️</button>
                     </div>
                 </li><li class="channel-item">
-                    <div class="channel-info" onclick="playChannel('http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/395568', 'WATCH  WWE', this)">
+                    <div class="channel-info" onclick="playChannel('http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/395568', 'WATCH WWE', this)">
                         <img src="http://tayaara.store:80/images/marvel/1719760162433.jpg" class="channel-logo" alt="logo" onerror="this.src='https://via.placeholder.com/40/111/fff?text=TV'">
-                        <span class="channel-name">WATCH  WWE</span>
+                        <span class="channel-name">WATCH WWE</span>
                     </div>
                     <div class="channel-actions">
                         <button class="btn-edit" title="تعديل" onclick="editChannel(7)">✏️</button>
                         <button class="btn-delete" title="حذف" onclick="deleteChannel(7)">🗑️</button>
                     </div>
                 </li><li class="channel-item">
-                    <div class="channel-info" onclick="playChannel('http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/266083', 'Usa | Sport: UFC 1 HD', this)">
+                    <div class="channel-info" onclick="playChannel('http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/266083', 'USA | Sport: UFC 1 HD', this)">
                         <img src="http://tayaara.store:80/images/marvel/1718441004430.jpg" class="channel-logo" alt="logo" onerror="this.src='https://via.placeholder.com/40/111/fff?text=TV'">
-                        <span class="channel-name">Usa | Sport: UFC 1 HD</span>
+                        <span class="channel-name">USA | Sport: UFC 1 HD</span>
                     </div>
                     <div class="channel-actions">
                         <button class="btn-edit" title="تعديل" onclick="editChannel(8)">✏️</button>
@@ -3826,12 +3824,24 @@
 
         let hls;
 
-        // سحب القنوات من المتصفح
-        let channels = JSON.parse(localStorage.getItem('myChannels')) || [];
+        // القنوات الأساسية
+        const defaultChannels = [
+            { name: "WWE FEED MARVEL SD", logo: "http://tayaara.store:80/images/marvel/1745087188179.jpg", url: "http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/87164" },
+            { name: "WWE FEED MARVEL HD", logo: "http://tayaara.store:80/images/marvel/1745087204214.jpg", url: "http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/102808" },
+            { name: "|US| WWE", logo: "http://tayaara.store:80/images/marvel/1717335586141.jpg", url: "http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/87170" },
+            { name: "We Can WWE", logo: "http://tayaara.store:80/images/marvel/1719684640353.jpg", url: "http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/395572" },
+            { name: "IMDB WWE 1", logo: "http://tayaara.store:80/images/marvel/1718615502226.jpg", url: "http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/395571" },
+            { name: "IMDB WWE", logo: "http://tayaara.store:80/images/marvel/1718615512213.jpg", url: "http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/395570" },
+            { name: "Majestic WWE", logo: "http://tayaara.store:80/images/marvel/1716990099438.jpg", url: "http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/395569" },
+            { name: "WATCH WWE", logo: "http://tayaara.store:80/images/marvel/1719760162433.jpg", url: "http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/395568" },
+            { name: "USA | Sport: UFC 1 HD", logo: "http://tayaara.store:80/images/marvel/1718441004430.jpg", url: "http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/266083" }
+        ];
 
-        // دالة تحديث الحفظ والرسم
-        function updateStorageAndUI() {
-            localStorage.setItem('myChannels', JSON.stringify(channels));
+        // المتغير اللي شايل القنوات (نسخة من الأساسيين ومفيش أي حفظ في المتصفح)
+        let channels = [...defaultChannels];
+
+        // دالة تحديث الواجهة بس
+        function updateUI() {
             renderPlaylist();
         }
 
@@ -3864,7 +3874,7 @@
             });
         }
 
-        // دالة التشغيل الذكية (بتعالج اللينكات عشان تناسب المتصفح)
+        // دالة التشغيل الذكية
         function playChannel(url, name, element) {
             currentChannelText.innerText = "● جاري تشغيل: " + name;
             document.querySelectorAll('.channel-item').forEach(item => item.classList.remove('active'));
@@ -3872,12 +3882,9 @@
 
             let streamUrl = url;
             
-            // لو اللينك بتاع اكستريم واخره .ts هنحوله لـ .m3u8 عشان المتصفح يفهمه
             if (streamUrl.includes('.ts')) {
                 streamUrl = streamUrl.replace('.ts', '.m3u8');
-            } 
-            // لو اللينك اخره رقم ومفيش فيه امتداد، نحطله .m3u8
-            else if (!streamUrl.includes('.m3u8')) {
+            } else if (!streamUrl.includes('.m3u8')) {
                 streamUrl += ".m3u8";
             }
 
@@ -3896,9 +3903,7 @@
             }
         }
 
-        // ==========================================
-        // 🔥 محرك استيراد ملفات الـ M3U
-        // ==========================================
+        // استيراد ملفات الـ M3U
         function handleFileUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -3914,32 +3919,22 @@
                     const line = lines[i].trim();
                     
                     if (line.startsWith('#EXTINF:')) {
-                        // سحب اسم القناة
                         let nameMatch = line.match(/,(.+)$/);
-                        // سحب اللوجو
                         let logoMatch = line.match(/tvg-logo="([^"]+)"/);
-
                         currentChannel.name = nameMatch ? nameMatch[1].trim() : 'قناة بدون اسم';
                         currentChannel.logo = logoMatch ? logoMatch[1] : '';
-                    } 
-                    else if (line !== '' && !line.startsWith('#')) {
-                        // السطر ده هو لينك القناة
+                    } else if (line !== '' && !line.startsWith('#')) {
                         currentChannel.url = line;
-                        
-                        // إضافة القناة للقايمة الأساسية
                         channels.push(currentChannel);
                         newChannelsCount++;
-                        
-                        // تصفير المتغير عشان القناة اللي بعدها
                         currentChannel = {}; 
                     }
                 }
 
-                updateStorageAndUI();
-                alert(`تم استيراد ${newChannelsCount} قناة بنجاح! 🎉`);
-                event.target.value = ''; // تصفير زرار الرفع
+                updateUI();
+                alert(`تم استيراد ${newChannelsCount} قناة بنجاح (مؤقتاً لحد ما تعمل ريفريش)! 🎉`);
+                event.target.value = ''; 
             };
-            
             reader.readAsText(file);
         }
 
@@ -3961,7 +3956,7 @@
                 cancelEdit();
             }
 
-            updateStorageAndUI();
+            updateUI();
             inputName.value = ''; inputUrl.value = ''; inputLogo.value = '';
         }
 
@@ -3981,15 +3976,15 @@
         function deleteChannel(index) {
             if(confirm("متأكد إنك عايز تمسح القناة دي؟")) {
                 channels.splice(index, 1);
-                updateStorageAndUI();
+                updateUI();
                 cancelEdit();
             }
         }
 
         function clearAllChannels() {
-            if(confirm("⚠️ تحذير: متأكد إنك عايز تمسح كل القنوات من القايمة؟")) {
+            if(confirm("⚠️ تحذير: متأكد إنك عايز تمسح كل القنوات من القايمة وتخليها فاضية؟")) {
                 channels = [];
-                updateStorageAndUI();
+                updateUI();
             }
         }
 
