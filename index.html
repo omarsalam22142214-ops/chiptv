@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
-<head>
+<html lang="ar" dir="rtl"><head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>X-Stream Pro - Ultimate</title>
@@ -30,9 +30,22 @@
         }
         .player-header h1 { margin: 0; font-size: 24px; color: #e50914; }
         .now-playing { color: #4caf50; font-size: 16px; font-weight: bold; }
+        
+        /* أزرار التحكم العلوية للمشغل */
+        .top-controls {
+            display: flex; justify-content: flex-end; gap: 10px; margin-bottom: 10px;
+        }
+        .btn-action {
+            background: #2a2a2a; border: 1px solid #444; color: white; 
+            padding: 6px 15px; border-radius: 6px; cursor: pointer; font-size: 13px; transition: 0.3s;
+        }
+        .btn-action:hover { background: #444; }
+        .btn-close:hover { background: #f44336; border-color: #f44336; }
+        .btn-refresh:hover { background: #2196F3; border-color: #2196F3; }
+
         video {
             width: 100%; border-radius: 8px; background: #000;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5); aspect-ratio: 16/9;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5); aspect-ratio: 16/9; outline: none;
         }
         
         /* القائمة */
@@ -76,17 +89,23 @@
         }
         .admin-panel input[type="text"]:focus { border-color: #e50914; }
         
-        .btn { padding: 10px 20px; border: none; border-radius: 6px; color: white; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        .btn { padding: 10px 15px; border: none; border-radius: 6px; color: white; font-weight: bold; cursor: pointer; transition: 0.3s; font-size: 14px; }
         .btn-add { background: #e50914; }
         .btn-add:hover { background: #b20710; }
         .btn-upload { background: #4caf50; display: flex; align-items: center; gap: 5px; white-space: nowrap;}
         .btn-upload:hover { background: #388e3c; }
+        .btn-export { background: #ff9800; display: flex; align-items: center; gap: 5px; white-space: nowrap; color: #fff;}
+        .btn-export:hover { background: #f57c00; }
+        .btn-delete-all { background: #f44336; display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+        .btn-delete-all:hover { background: #d32f2f; }
+        .upload-wrapper { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; }
 
         @media (max-width: 900px) {
             .main-content { flex-direction: column; }
             .playlist-section { border-right: none; border-top: 1px solid #333; max-height: 400px;}
             .admin-panel { flex-direction: column; align-items: stretch; }
             .form-group { flex-direction: column; }
+            .upload-wrapper { width: 100%; justify-content: space-between; }
         }
     </style>
 </head>
@@ -99,12 +118,14 @@
                 <input type="text" id="input-name" placeholder="اسم القناة (إجباري)">
                 <input type="text" id="input-url" placeholder="لينك البث (إجباري)">
                 <input type="text" id="input-logo" placeholder="لينك الصورة (اختياري)">
-                <button class="btn btn-add" onclick="addSingleChannel()">➕ إضافة القناة</button>
+                <button class="btn btn-add" onclick="addSingleChannel()">➕ إضافة</button>
             </div>
             
             <div class="upload-wrapper">
                 <input type="file" id="m3u-upload" accept=".m3u,.m3u8,.txt" style="display: none;" onchange="handleFileUpload(event)">
-                <button class="btn btn-upload" onclick="document.getElementById('m3u-upload').click()">📁 استيراد ملف M3U</button>
+                <button class="btn btn-upload" onclick="document.getElementById('m3u-upload').click()">📁 استيراد M3U</button>
+                <button class="btn btn-export" onclick="exportToHTML()">💾 حفظ كـ HTML</button>
+                <button class="btn btn-delete-all" onclick="deleteAllChannels()">🗑️ مسح الكل</button>
             </div>
         </div>
 
@@ -114,7 +135,13 @@
                     <h1>مشغل إكستريم برو</h1>
                     <span id="current-channel-name" class="now-playing">اختر قناة للتشغيل...</span>
                 </div>
-                <video id="video" controls autoplay preload="auto"></video>
+                
+                <div class="top-controls">
+                    <button class="btn-action btn-refresh" onclick="refreshPlayer()" title="تحديث البث">🔄 ريفريش</button>
+                    <button class="btn-action btn-close" onclick="closePlayer()" title="إغلاق البث">❌ إغلاق</button>
+                </div>
+
+                <video id="video" controls="" preload="auto"></video>
             </div>
 
             <div class="playlist-section">
@@ -122,8 +149,7 @@
                     <span>قائمة القنوات</span>
                     <span class="channel-count" id="channel-count">0 قناة</span>
                 </div>
-                <ul class="channel-list" id="playlist">
-                    </ul>
+                <ul class="channel-list" id="playlist"></ul>
             </div>
         </div>
 
@@ -140,799 +166,27 @@
         const inputLogo = document.getElementById('input-logo');
         
         let hls;
+        let activeStreamUrl = '';
+        let activeStreamName = '';
+        let activeElementRef = null;
 
-        // مكتبة القنوات الأساسية بتاعتك
-        const rawM3UData = `
-#EXTINF:-1 tvg-id="" tvg-name="WWE FEED MARVEL  SD" tvg-logo="http://tayaara.store:80/images/marvel/1745087188179.jpg" group-title="WWE LIVE",WWE FEED MARVEL  SD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/87164
-#EXTINF:-1 tvg-id="" tvg-name="WWE FEED MARVEL  HD" tvg-logo="http://tayaara.store:80/images/marvel/1745087204214.jpg" group-title="WWE LIVE",WWE FEED MARVEL  HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/102808
-#EXTINF:-1 tvg-id="" tvg-name="|US| WWE" tvg-logo="http://tayaara.store:80/images/marvel/1717335586141.jpg" group-title="WWE LIVE",|US| WWE
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/87170
-#EXTINF:-1 tvg-id="" tvg-name="we can  wwe" tvg-logo="http://tayaara.store:80/images/marvel/1719684640353.jpg" group-title="WWE LIVE",we can  wwe
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/395572
-#EXTINF:-1 tvg-id="" tvg-name="IMDB  WWE 1" tvg-logo="http://tayaara.store:80/images/marvel/1718615502226.jpg" group-title="WWE LIVE",IMDB  WWE 1
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/395571
-#EXTINF:-1 tvg-id="" tvg-name="IMDB   WWE" tvg-logo="http://tayaara.store:80/images/marvel/1718615512213.jpg" group-title="WWE LIVE",IMDB   WWE
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/395570
-#EXTINF:-1 tvg-id="" tvg-name="Majestic  WWE" tvg-logo="http://tayaara.store:80/images/marvel/1716990099438.jpg" group-title="WWE LIVE",Majestic  WWE
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/395569
-#EXTINF:-1 tvg-id="" tvg-name="WATCH  WWE" tvg-logo="http://tayaara.store:80/images/marvel/1719760162433.jpg" group-title="WWE LIVE",WATCH  WWE
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/395568
-#EXTINF:-1 tvg-id="" tvg-name="Usa | Sport: UFC 1 HD" tvg-logo="http://tayaara.store:80/images/marvel/1718441004430.jpg" group-title="WWE LIVE",Usa | Sport: UFC 1 HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/266083
-#EXTINF:0,LOCAL beIN SPORTS 4 LOW
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/523923
-#EXTINF:0,LOCAL beIN SPORTS 2 LOW
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/523453
-#EXTINF:0,beIN SPORTS 7 LOW H265
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249686
-#EXTINF:0,beIN SPORTS 6 LOW H265
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249685
-#EXTINF:0,beIN SPORTS 5 LOW H265
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249684
-#EXTINF:0,beIN SPORTS 4 LOW H265
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249683
-#EXTINF:0,beIN SPORTS 3 LOW H265
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249682
-#EXTINF:0,beIN SPORTS 2 LOW H265
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249681
-#EXTINF:0,beIN SPORTS 1 LOW H265
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249680
-#EXTINF:0,beIN SPORTS 3 Premium LOW H265
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249679
-#EXTINF:0,beIN SPORTS 1 Premium LOW H265
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249677
-#EXTINF:0,beIN SPORTS 7 SD H265
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249676
-#EXTINF:0,beIN SPORTS 6 SD H265
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249675
-#EXTINF:0,beIN SPORTS 5 SD H265
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249674
-#EXTINF:0,beIN SPORTS 4 SD H265
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249673
-#EXTINF:0,beIN SPORTS 3 SD H265
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249672
-#EXTINF:0,beIN SPORTS 2 SD H265
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249671
-#EXTINF:0,beIN SPORTS 3 Premium SD H265
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249669
-#EXTINF:0,beIN SPORTS 2 Premium SD H265
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249668
-#EXTINF:0,beIN SPORTS 1 Premium SD H265
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249667
-#EXTINF:0,LOCAL beIN SPORTS 9 LOW
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249665
-#EXTINF:0,LOCAL beIN SPORTS 8 LOW
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249664
-#EXTINF:0,LOCAL beIN SPORTS 7 LOW
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249663
-#EXTINF:0,LOCAL beIN SPORTS 6 LOW
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249662
-#EXTINF:0,LOCAL beIN SPORTS 5 LOW
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249661
-#EXTINF:0,LOCAL beIN SPORTS 3 LOW
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249659
-#EXTINF:0,LOCAL beIN SPORTS 1 LOW
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249657
-#EXTINF:-1 tvg-id="" tvg-name="Nat Geo People HD" tvg-logo="https://tayaara.store/live/int/28.jpg" group-title="beIN ENTERTAINMENT",Nat Geo People HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/92376
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 1 FHD" tvg-logo="http://tayaara.store/live/be/1.jpg" group-title="beIN SPORTS FHD",beIN SPORTS 1 FHD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/101092
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 2 FHD" tvg-logo="http://tayaara.store/live/be/2.jpg" group-title="beIN SPORTS FHD",beIN SPORTS 2 FHD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/101093
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 3 FHD" tvg-logo="http://tayaara.store/live/be/3.jpg" group-title="beIN SPORTS FHD",beIN SPORTS 3 FHD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/101094
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 4 FHD" tvg-logo="http://tayaara.store/live/be/4.jpg" group-title="beIN SPORTS FHD",beIN SPORTS 4 FHD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/101095
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 5 FHD" tvg-logo="http://tayaara.store/live/be/5.jpg" group-title="beIN SPORTS FHD",beIN SPORTS 5 FHD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/101096
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 6 FHD" tvg-logo="http://tayaara.store/live/be/6.jpg" group-title="beIN SPORTS FHD",beIN SPORTS 6 FHD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/101097
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 7 FHD" tvg-logo="http://tayaara.store/live/be/7.jpg" group-title="beIN SPORTS FHD",beIN SPORTS 7 FHD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/101098
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 8 FHD" tvg-logo="http://tayaara.store/live/be/8.jpg" group-title="beIN SPORTS FHD",beIN SPORTS 8 FHD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/101099
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 9 FHD" tvg-logo="http://tayaara.store/live/be/9.jpg" group-title="beIN SPORTS FHD",beIN SPORTS 9 FHD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/101100
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS GLOBAL 4K" tvg-logo="https://tayaara.store/live/be/21.jpg" group-title="beIN SPORTS 4K",beIN SPORTS GLOBAL 4K
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/221933
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 1 4K" tvg-logo="http://tayaara.store/live/be/1.jpg" group-title="beIN SPORTS 4K",beIN SPORTS 1 4K
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214594
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 2 4K" tvg-logo="http://tayaara.store/live/be/2.jpg" group-title="beIN SPORTS 4K",beIN SPORTS 2 4K
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214593
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 3 4K" tvg-logo="http://tayaara.store/live/be/3.jpg" group-title="beIN SPORTS 4K",beIN SPORTS 3 4K
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214592
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 4 4K" tvg-logo="http://tayaara.store/live/be/4.jpg" group-title="beIN SPORTS 4K",beIN SPORTS 4 4K
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214591
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 5 4K" tvg-logo="http://tayaara.store/live/be/5.jpg" group-title="beIN SPORTS 4K",beIN SPORTS 5 4K
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214590
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 6 4K" tvg-logo="http://tayaara.store/live/be/6.jpg" group-title="beIN SPORTS 4K",beIN SPORTS 6 4K
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214589
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 7 4K" tvg-logo="http://tayaara.store/live/be/7.jpg" group-title="beIN SPORTS 4K",beIN SPORTS 7 4K
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214588
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 8 4K" tvg-logo="http://tayaara.store/live/be/8.jpg" group-title="beIN SPORTS 4K",beIN SPORTS 8 4K
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214587
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 9 4K" tvg-logo="http://tayaara.store/live/be/9.jpg" group-title="beIN SPORTS 4K",beIN SPORTS 9 4K
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214586
-#EXTINF:-1 tvg-id="" tvg-name="ALWAN SPORTS 1 FHD" tvg-logo="http://tayaara.store:80/images/marvel/1759232316459.jpg" group-title="ALWAN SPORTS",ALWAN SPORTS 1 FHD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/485632
-#EXTINF:-1 tvg-id="" tvg-name="ALWAN SPORTS 2 FHD" tvg-logo="http://tayaara.store:80/images/marvel/1759232316459.jpg" group-title="ALWAN SPORTS",ALWAN SPORTS 2 FHD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/485633
-#EXTINF:-1 tvg-id="" tvg-name="ALWAN SPORTS 3 FHD" tvg-logo="http://tayaara.store:80/images/marvel/1759232316459.jpg" group-title="ALWAN SPORTS",ALWAN SPORTS 3 FHD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/485634
-#EXTINF:-1 tvg-id="" tvg-name="ALWAN SPORTS 4 FHD" tvg-logo="http://tayaara.store:80/images/marvel/1759232316459.jpg" group-title="ALWAN SPORTS",ALWAN SPORTS 4 FHD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/485635
-#EXTINF:-1 tvg-id="" tvg-name="ALWAN SPORTS 5 FHD" tvg-logo="http://tayaara.store:80/images/marvel/1759232316459.jpg" group-title="ALWAN SPORTS",ALWAN SPORTS 5 FHD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/485636
-#EXTINF:-1 tvg-id="" tvg-name="ALWAN SPORTS 6 FHD" tvg-logo="http://tayaara.store:80/images/marvel/1759232316459.jpg" group-title="ALWAN SPORTS",ALWAN SPORTS 6 FHD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/485637
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 1 H.265 LOW" tvg-logo="http://tayaara.store/live/be/1.jpg" group-title="beIN SPORTS H.265 LOW",beIN SPORTS 1 H.265 LOW
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/182208
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 2 H.265 LOW" tvg-logo="http://tayaara.store/live/be/2.jpg" group-title="beIN SPORTS H.265 LOW",beIN SPORTS 2 H.265 LOW
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/182207
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 3 H.265 LOW" tvg-logo="http://tayaara.store/live/be/3.jpg" group-title="beIN SPORTS H.265 LOW",beIN SPORTS 3 H.265 LOW
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/182206
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 4 H.265 LOW" tvg-logo="http://tayaara.store/live/be/4.jpg" group-title="beIN SPORTS H.265 LOW",beIN SPORTS 4 H.265 LOW
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/182205
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 5 H.265 LOW" tvg-logo="http://tayaara.store/live/be/5.jpg" group-title="beIN SPORTS H.265 LOW",beIN SPORTS 5 H.265 LOW
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/182204
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 6 H.265 LOW" tvg-logo="http://tayaara.store/live/be/6.jpg" group-title="beIN SPORTS H.265 LOW",beIN SPORTS 6 H.265 LOW
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/182203
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 7 H.265 LOW" tvg-logo="http://tayaara.store/live/be/7.jpg" group-title="beIN SPORTS H.265 LOW",beIN SPORTS 7 H.265 LOW
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/182202
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 8 H.265 LOW" tvg-logo="http://tayaara.store/live/be/8.jpg" group-title="beIN SPORTS H.265 LOW",beIN SPORTS 8 H.265 LOW
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/182201
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 9 H.265 LOW" tvg-logo="http://tayaara.store/live/be/9.jpg" group-title="beIN SPORTS H.265 LOW",beIN SPORTS 9 H.265 LOW
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/182200
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 1 H.265 SD" tvg-logo="http://tayaara.store/live/be/1.jpg" group-title="beIN SPORTS H.265 SD",beIN SPORTS 1 H.265 SD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/75625
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 2 H.265 SD" tvg-logo="http://tayaara.store/live/be/2.jpg" group-title="beIN SPORTS H.265 SD",beIN SPORTS 2 H.265 SD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/75626
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 3 H.265 SD" tvg-logo="http://tayaara.store/live/be/3.jpg" group-title="beIN SPORTS H.265 SD",beIN SPORTS 3 H.265 SD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/75627
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 4 H.265 SD" tvg-logo="http://tayaara.store/live/be/4.jpg" group-title="beIN SPORTS H.265 SD",beIN SPORTS 4 H.265 SD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/75628
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 5 H.265 SD" tvg-logo="http://tayaara.store/live/be/5.jpg" group-title="beIN SPORTS H.265 SD",beIN SPORTS 5 H.265 SD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/75629
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 6 H.265 SD" tvg-logo="http://tayaara.store/live/be/6.jpg" group-title="beIN SPORTS H.265 SD",beIN SPORTS 6 H.265 SD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/75630
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 7 H.265 SD" tvg-logo="http://tayaara.store/live/be/7.jpg" group-title="beIN SPORTS H.265 SD",beIN SPORTS 7 H.265 SD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/75631
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 8 H.265 SD" tvg-logo="http://tayaara.store/live/be/8.jpg" group-title="beIN SPORTS H.265 SD",beIN SPORTS 8 H.265 SD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/75632
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 9 H.265 SD" tvg-logo="http://tayaara.store/live/be/9.jpg" group-title="beIN SPORTS H.265 SD",beIN SPORTS 9 H.265 SD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/75633
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 1 H.265 HD" tvg-logo="http://tayaara.store/live/be/1.jpg" group-title="beIN SPORTS H.265 HD",beIN SPORTS 1 H.265 HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/149327
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 2 H.265 HD" tvg-logo="http://tayaara.store/live/be/2.jpg" group-title="beIN SPORTS H.265 HD",beIN SPORTS 2 H.265 HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/149328
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 3 H.265 HD" tvg-logo="http://tayaara.store/live/be/3.jpg" group-title="beIN SPORTS H.265 HD",beIN SPORTS 3 H.265 HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/502222
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 4 H.265 HD" tvg-logo="http://tayaara.store/live/be/4.jpg" group-title="beIN SPORTS H.265 HD",beIN SPORTS 4 H.265 HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/149330
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 5 H.265 HD" tvg-logo="http://tayaara.store/live/be/5.jpg" group-title="beIN SPORTS H.265 HD",beIN SPORTS 5 H.265 HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/149331
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 6 H.265 HD" tvg-logo="http://tayaara.store/live/be/6.jpg" group-title="beIN SPORTS H.265 HD",beIN SPORTS 6 H.265 HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/149332
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 7 H.265 HD" tvg-logo="http://tayaara.store/live/be/7.jpg" group-title="beIN SPORTS H.265 HD",beIN SPORTS 7 H.265 HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/149333
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 8 H.265 HD" tvg-logo="http://tayaara.store/live/be/8.jpg" group-title="beIN SPORTS H.265 HD",beIN SPORTS 8 H.265 HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/149334
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 9 H.265 HD" tvg-logo="http://tayaara.store/live/be/9.jpg" group-title="beIN SPORTS H.265 HD",beIN SPORTS 9 H.265 HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/149335
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 1 H.265 FHD" tvg-logo="http://tayaara.store/live/be/1.jpg" group-title="beIN SPORTS H.265 FHD",beIN SPORTS 1 H.265 FHD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214564
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 2 H.265 FHD" tvg-logo="http://tayaara.store/live/be/2.jpg" group-title="beIN SPORTS H.265 FHD",beIN SPORTS 2 H.265 FHD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214563
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 3 H.265 FHD" tvg-logo="http://tayaara.store/live/be/3.jpg" group-title="beIN SPORTS H.265 FHD",beIN SPORTS 3 H.265 FHD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214562
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 4 H.265 FHD" tvg-logo="http://tayaara.store/live/be/4.jpg" group-title="beIN SPORTS H.265 FHD",beIN SPORTS 4 H.265 FHD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214561
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 5 H.265 FHD" tvg-logo="http://tayaara.store/live/be/5.jpg" group-title="beIN SPORTS H.265 FHD",beIN SPORTS 5 H.265 FHD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214560
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 6 H.265 FHD" tvg-logo="http://tayaara.store/live/be/6.jpg" group-title="beIN SPORTS H.265 FHD",beIN SPORTS 6 H.265 FHD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214559
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 7 H.265 FHD" tvg-logo="http://tayaara.store/live/be/7.jpg" group-title="beIN SPORTS H.265 FHD",beIN SPORTS 7 H.265 FHD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214558
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 8 H.265 FHD" tvg-logo="http://tayaara.store/live/be/8.jpg" group-title="beIN SPORTS H.265 FHD",beIN SPORTS 8 H.265 FHD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214557
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 9 H.265 FHD" tvg-logo="http://tayaara.store/live/be/9.jpg" group-title="beIN SPORTS H.265 FHD",beIN SPORTS 9 H.265 FHD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214556
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS GLOBAL HD" tvg-logo="" group-title="beIN SPORTS NEWS",beIN SPORTS GLOBAL HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/484979
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS NEWS HD" tvg-logo="http://tayaara.store/live/be/20.jpg" group-title="beIN SPORTS NEWS",beIN SPORTS NEWS HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/250335
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS GLOBAL FHD" tvg-logo="" group-title="beIN SPORTS NEWS",beIN SPORTS GLOBAL FHD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/369700
-#EXTINF:-1 tvg-id="" tvg-name="HBO MAX CINEMA 1" tvg-logo="http://tayaara.store:80/images/marvel/1717084383277.jpg" group-title="HBO MAX CHANNELS",HBO MAX CINEMA 1
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/169274
-#EXTINF:-1 tvg-id="" tvg-name="HBO MAX KIDS 4" tvg-logo="http://tayaara.store:80/images/marvel/1717084467151.jpg" group-title="HBO MAX CHANNELS",HBO MAX KIDS 4
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/169236
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 1 SD" tvg-logo="http://tayaara.store/live/be/1.jpg" group-title="beIN SPORTS SD",beIN SPORTS 1 SD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214574
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 2 SD" tvg-logo="http://tayaara.store/live/be/2.jpg" group-title="beIN SPORTS SD",beIN SPORTS 2 SD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/523399
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 3 SD" tvg-logo="http://tayaara.store/live/be/3.jpg" group-title="beIN SPORTS SD",beIN SPORTS 3 SD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214572
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 4 SD" tvg-logo="http://tayaara.store/live/be/4.jpg" group-title="beIN SPORTS SD",beIN SPORTS 4 SD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214571
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 5 SD" tvg-logo="http://tayaara.store/live/be/5.jpg" group-title="beIN SPORTS SD",beIN SPORTS 5 SD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214570
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 6 SD" tvg-logo="http://tayaara.store/live/be/6.jpg" group-title="beIN SPORTS SD",beIN SPORTS 6 SD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214569
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 7 SD" tvg-logo="http://tayaara.store/live/be/7.jpg" group-title="beIN SPORTS SD",beIN SPORTS 7 SD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214568
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 8 SD" tvg-logo="http://tayaara.store/live/be/8.jpg" group-title="beIN SPORTS SD",beIN SPORTS 8 SD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214567
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 9 SD" tvg-logo="http://tayaara.store/live/be/9.jpg" group-title="beIN SPORTS SD",beIN SPORTS 9 SD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214566
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 1 HD" tvg-logo="http://tayaara.store/live/be/1.jpg" group-title="beIN SPORTS HD",beIN SPORTS 1 HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214584
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 2 HD" tvg-logo="http://tayaara.store/live/be/2.jpg" group-title="beIN SPORTS HD",beIN SPORTS 2 HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214583
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 3 HD" tvg-logo="http://tayaara.store/live/be/3.jpg" group-title="beIN SPORTS HD",beIN SPORTS 3 HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214582
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 4 HD" tvg-logo="http://tayaara.store/live/be/4.jpg" group-title="beIN SPORTS HD",beIN SPORTS 4 HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214581
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 5 HD" tvg-logo="http://tayaara.store/live/be/5.jpg" group-title="beIN SPORTS HD",beIN SPORTS 5 HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214580
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 6 HD" tvg-logo="http://tayaara.store/live/be/6.jpg" group-title="beIN SPORTS HD",beIN SPORTS 6 HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214579
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 7 HD" tvg-logo="http://tayaara.store/live/be/7.jpg" group-title="beIN SPORTS HD",beIN SPORTS 7 HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214578
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 8 HD" tvg-logo="http://tayaara.store/live/be/8.jpg" group-title="beIN SPORTS HD",beIN SPORTS 8 HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214577
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 9 HD" tvg-logo="http://tayaara.store/live/be/9.jpg" group-title="beIN SPORTS HD",beIN SPORTS 9 HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214576
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS NBA" tvg-logo="https://tayaara.store/live/be/70.jpg" group-title="beIN SPORTS XTRA ",beIN SPORTS NBA
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/284023
-#EXTINF:-1 tvg-id="" tvg-name="beIN Xtra SD1" tvg-logo="" group-title="beIN SPORTS XTRA ",beIN Xtra SD1
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507687
-#EXTINF:-1 tvg-id="" tvg-name="beIN Xtra HD1" tvg-logo="" group-title="beIN SPORTS XTRA ",beIN Xtra HD1
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507678
-#EXTINF:-1 tvg-id="" tvg-name="beIN Xtra 4K 1" tvg-logo="" group-title="beIN SPORTS XTRA ",beIN Xtra 4K 1
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507669
-#EXTINF:-1 tvg-id="" tvg-name="beIN Xtra SD2" tvg-logo="" group-title="beIN SPORTS XTRA ",beIN Xtra SD2
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507688
-#EXTINF:-1 tvg-id="" tvg-name="beIN Xtra HD2" tvg-logo="" group-title="beIN SPORTS XTRA ",beIN Xtra HD2
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507679
-#EXTINF:-1 tvg-id="" tvg-name="beIN Xtra 4K 2" tvg-logo="" group-title="beIN SPORTS XTRA ",beIN Xtra 4K 2
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507670
-#EXTINF:-1 tvg-id="" tvg-name="beIN Xtra SD3" tvg-logo="" group-title="beIN SPORTS XTRA ",beIN Xtra SD3
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507689
-#EXTINF:-1 tvg-id="" tvg-name="beIN Xtra HD3" tvg-logo="" group-title="beIN SPORTS XTRA ",beIN Xtra HD3
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507680
-#EXTINF:-1 tvg-id="" tvg-name="beIN Xtra 4K  3" tvg-logo="" group-title="beIN SPORTS XTRA ",beIN Xtra 4K  3
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507671
-#EXTINF:-1 tvg-id="" tvg-name="beIN Xtra SD4" tvg-logo="" group-title="beIN SPORTS XTRA ",beIN Xtra SD4
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507690
-#EXTINF:-1 tvg-id="" tvg-name="beIN Xtra HD4" tvg-logo="" group-title="beIN SPORTS XTRA ",beIN Xtra HD4
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507681
-#EXTINF:-1 tvg-id="" tvg-name="beIN Xtra 4K 4" tvg-logo="" group-title="beIN SPORTS XTRA ",beIN Xtra 4K 4
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507672
-#EXTINF:-1 tvg-id="" tvg-name="beIN Xtra SD5" tvg-logo="" group-title="beIN SPORTS XTRA ",beIN Xtra SD5
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507691
-#EXTINF:-1 tvg-id="" tvg-name="beIN Xtra HD5" tvg-logo="" group-title="beIN SPORTS XTRA ",beIN Xtra HD5
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507682
-#EXTINF:-1 tvg-id="" tvg-name="beIN Xtra 4K 5" tvg-logo="" group-title="beIN SPORTS XTRA ",beIN Xtra 4K 5
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507673
-#EXTINF:-1 tvg-id="" tvg-name="beIN Xtra SD6" tvg-logo="" group-title="beIN SPORTS XTRA ",beIN Xtra SD6
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507692
-#EXTINF:-1 tvg-id="" tvg-name="beIN Xtra HD6" tvg-logo="" group-title="beIN SPORTS XTRA ",beIN Xtra HD6
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507683
-#EXTINF:-1 tvg-id="" tvg-name="beIN Xtra 4K 6" tvg-logo="" group-title="beIN SPORTS XTRA ",beIN Xtra 4K 6
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507674
-#EXTINF:-1 tvg-id="" tvg-name="beIN Xtra SD7" tvg-logo="" group-title="beIN SPORTS XTRA ",beIN Xtra SD7
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507693
-#EXTINF:-1 tvg-id="" tvg-name="beIN Xtra HD7" tvg-logo="" group-title="beIN SPORTS XTRA ",beIN Xtra HD7
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507684
-#EXTINF:-1 tvg-id="" tvg-name="beIN Xtra 4K 7" tvg-logo="" group-title="beIN SPORTS XTRA ",beIN Xtra 4K 7
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507675
-#EXTINF:-1 tvg-id="" tvg-name="beIN Xtra SD8" tvg-logo="" group-title="beIN SPORTS XTRA ",beIN Xtra SD8
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507694
-#EXTINF:-1 tvg-id="" tvg-name="beIN Xtra HD8" tvg-logo="" group-title="beIN SPORTS XTRA ",beIN Xtra HD8
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507685
-#EXTINF:-1 tvg-id="" tvg-name="beIN Xtra 4K 8" tvg-logo="" group-title="beIN SPORTS XTRA ",beIN Xtra 4K 8
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507676
-#EXTINF:-1 tvg-id="" tvg-name="beIN Xtra SD9" tvg-logo="" group-title="beIN SPORTS XTRA ",beIN Xtra SD9
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507695
-#EXTINF:-1 tvg-id="" tvg-name="beIN Xtra HD9" tvg-logo="" group-title="beIN SPORTS XTRA ",beIN Xtra HD9
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507686
-#EXTINF:-1 tvg-id="" tvg-name="beIN Xtra 4K 9" tvg-logo="" group-title="beIN SPORTS XTRA ",beIN Xtra 4K 9
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507677
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS AFC SD" tvg-logo="https://tayaara.store/live/be/16.jpg" group-title="beIN SPORTS AFC",beIN SPORTS AFC SD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/288729
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS AFC HD" tvg-logo="https://tayaara.store/live/be/16.jpg" group-title="beIN SPORTS AFC",beIN SPORTS AFC HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/288726
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS AFC 4K" tvg-logo="https://tayaara.store/live/be/16.jpg" group-title="beIN SPORTS AFC",beIN SPORTS AFC 4K
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/288725
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS AFC 1 SD" tvg-logo="https://tayaara.store/live/be/66.jpg" group-title="beIN SPORTS AFC",beIN SPORTS AFC 1 SD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/322219
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS AFC 1 HD" tvg-logo="https://tayaara.store/live/be/66.jpg" group-title="beIN SPORTS AFC",beIN SPORTS AFC 1 HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/322222
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS AFC 2 SD" tvg-logo="https://tayaara.store/live/be/67.jpg" group-title="beIN SPORTS AFC",beIN SPORTS AFC 2 SD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/322220
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS AFC 2 HD" tvg-logo="https://tayaara.store/live/be/67.jpg" group-title="beIN SPORTS AFC",beIN SPORTS AFC 2 HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/322223
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS AFC 3 SD" tvg-logo="https://tayaara.store/live/be/68.jpg" group-title="beIN SPORTS AFC",beIN SPORTS AFC 3 SD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/322221
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS AFC 3 HD" tvg-logo="https://tayaara.store/live/be/68.jpg" group-title="beIN SPORTS AFC",beIN SPORTS AFC 3 HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/322224
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS AFC 4 SD" tvg-logo="" group-title="beIN SPORTS AFC",beIN SPORTS AFC 4 SD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/322383
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS AFC 4 HD" tvg-logo="" group-title="beIN SPORTS AFC",beIN SPORTS AFC 4 HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/322382
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS ENGLISH 1 SD" tvg-logo="http://tayaara.store/live/be/1.jpg" group-title="beIN SPORTS ENGLISH",beIN SPORTS ENGLISH 1 SD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/334531
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS ENGLISH 2 SD" tvg-logo="http://tayaara.store/live/be/2.jpg" group-title="beIN SPORTS ENGLISH",beIN SPORTS ENGLISH 2 SD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/334532
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS ENGLISH 1 HD" tvg-logo="http://tayaara.store/live/be/1.jpg" group-title="beIN SPORTS ENGLISH",beIN SPORTS ENGLISH 1 HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/334529
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS ENGLISH 2 HD" tvg-logo="http://tayaara.store/live/be/2.jpg" group-title="beIN SPORTS ENGLISH",beIN SPORTS ENGLISH 2 HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/334530
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS ENGLISH 1 4K" tvg-logo="http://tayaara.store/live/be/1.jpg" group-title="beIN SPORTS ENGLISH",beIN SPORTS ENGLISH 1 4K
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/334527
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS ENGLISH 2 4K" tvg-logo="http://tayaara.store/live/be/2.jpg" group-title="beIN SPORTS ENGLISH",beIN SPORTS ENGLISH 2 4K
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/334528
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS French 1 SD" tvg-logo="http://tayaara.store/live/be/1.jpg" group-title="beIN SPORTS FERNCH",beIN SPORTS French 1 SD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/382888
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS French 2 SD" tvg-logo="http://tayaara.store/live/be/2.jpg" group-title="beIN SPORTS FERNCH",beIN SPORTS French 2 SD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/382887
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS French 1 HD" tvg-logo="http://tayaara.store/live/be/1.jpg" group-title="beIN SPORTS FERNCH",beIN SPORTS French 1 HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/382886
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS French 2 HD" tvg-logo="http://tayaara.store/live/be/2.jpg" group-title="beIN SPORTS FERNCH",beIN SPORTS French 2 HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/382885
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS French 1 4K" tvg-logo="http://tayaara.store/live/be/1.jpg" group-title="beIN SPORTS FERNCH",beIN SPORTS French 1 4K
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/382884
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS French 2 4K" tvg-logo="http://tayaara.store/live/be/2.jpg" group-title="beIN SPORTS FERNCH",beIN SPORTS French 2 4K
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/382883
-#EXTINF:-1 tvg-id="" tvg-name="FEED MARVEL 1 SD" tvg-logo="http://tayaara.store:80/images/marvel/1723301145254.jpg" group-title="FEED || LIVE EVENT ||",FEED MARVEL 1 SD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/386807
-#EXTINF:-1 tvg-id="" tvg-name="FEED MARVEL 1 HD" tvg-logo="http://tayaara.store:80/images/marvel/1723301145254.jpg" group-title="FEED || LIVE EVENT ||",FEED MARVEL 1 HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/363991
-#EXTINF:-1 tvg-id="" tvg-name="FEED MARVEL 2 FHD" tvg-logo="http://tayaara.store:80/images/marvel/1723301145254.jpg" group-title="FEED || LIVE EVENT ||",FEED MARVEL 2 FHD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/362519
-#EXTINF:-1 tvg-id="" tvg-name="FEED MARVEL 3 SD" tvg-logo="http://tayaara.store:80/images/marvel/1723301145254.jpg" group-title="FEED || LIVE EVENT ||",FEED MARVEL 3 SD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/386805
-#EXTINF:-1 tvg-id="" tvg-name="FEED MARVEL 3 FHD" tvg-logo="http://tayaara.store:80/images/marvel/1723301145254.jpg" group-title="FEED || LIVE EVENT ||",FEED MARVEL 3 FHD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/386806
-#EXTINF:-1 tvg-id="" tvg-name="FEED MARVEL 4 SD" tvg-logo="http://tayaara.store:80/images/marvel/1723301134493.jpg" group-title="FEED || LIVE EVENT ||",FEED MARVEL 4 SD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/359294
-#EXTINF:-1 tvg-id="" tvg-name="FEED MARVEL 4 FHD" tvg-logo="http://tayaara.store:80/images/marvel/1723301145254.jpg" group-title="FEED || LIVE EVENT ||",FEED MARVEL 4 FHD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/359293
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 1 MINI" tvg-logo="http://tayaara.store/live/be/1.jpg" group-title="beIN SPORTS MINI",beIN SPORTS 1 MINI
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/523396
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 2 MINI" tvg-logo="http://tayaara.store/live/be/2.jpg" group-title="beIN SPORTS MINI",beIN SPORTS 2 MINI
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/178701
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 3 MINI" tvg-logo="http://tayaara.store/live/be/3.jpg" group-title="beIN SPORTS MINI",beIN SPORTS 3 MINI
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/178700
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 4 MINI" tvg-logo="http://tayaara.store/live/be/4.jpg" group-title="beIN SPORTS MINI",beIN SPORTS 4 MINI
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/178699
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 5 MINI" tvg-logo="http://tayaara.store/live/be/5.jpg" group-title="beIN SPORTS MINI",beIN SPORTS 5 MINI
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/178698
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 6 MINI" tvg-logo="http://tayaara.store/live/be/6.jpg" group-title="beIN SPORTS MINI",beIN SPORTS 6 MINI
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/178697
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 7 MINI" tvg-logo="http://tayaara.store/live/be/7.jpg" group-title="beIN SPORTS MINI",beIN SPORTS 7 MINI
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/178696
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 8 MINI" tvg-logo="http://tayaara.store/live/be/8.jpg" group-title="beIN SPORTS MINI",beIN SPORTS 8 MINI
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/178695
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 9 MINI" tvg-logo="http://tayaara.store/live/be/9.jpg" group-title="beIN SPORTS MINI",beIN SPORTS 9 MINI
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/523419
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 1 LOW" tvg-logo="http://tayaara.store/live/be/1.jpg" group-title="beIN SPORTS LOW",beIN SPORTS 1 LOW
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/178670
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 2 LOW" tvg-logo="http://tayaara.store/live/be/2.jpg" group-title="beIN SPORTS LOW",beIN SPORTS 2 LOW
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/178669
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 3 LOW" tvg-logo="http://tayaara.store/live/be/3.jpg" group-title="beIN SPORTS LOW",beIN SPORTS 3 LOW
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/499321
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 4 LOW" tvg-logo="http://tayaara.store/live/be/4.jpg" group-title="beIN SPORTS LOW",beIN SPORTS 4 LOW
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/178667
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 5 LOW" tvg-logo="http://tayaara.store/live/be/5.jpg" group-title="beIN SPORTS LOW",beIN SPORTS 5 LOW
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/178666
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 6 LOW" tvg-logo="http://tayaara.store/live/be/6.jpg" group-title="beIN SPORTS LOW",beIN SPORTS 6 LOW
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/178665
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 7 LOW" tvg-logo="http://tayaara.store/live/be/7.jpg" group-title="beIN SPORTS LOW",beIN SPORTS 7 LOW
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/178664
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 8 LOW" tvg-logo="http://tayaara.store/live/be/8.jpg" group-title="beIN SPORTS LOW",beIN SPORTS 8 LOW
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/178663
-#EXTINF:-1 tvg-id="" tvg-name="beIN SPORTS 9 LOW" tvg-logo="http://tayaara.store/live/be/9.jpg" group-title="beIN SPORTS LOW",beIN SPORTS 9 LOW
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/178662
-#EXTINF:-1 tvg-id="" tvg-name="Arabs Got Talent" tvg-logo="" group-title="SHAHID Live",Arabs Got Talent
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/379523
-#EXTINF:-1 tvg-id="" tvg-name="RedBull Tv" tvg-logo="" group-title="SHAHID Live",RedBull Tv
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/379521
-#EXTINF:-1 tvg-id="" tvg-name="DRAMA TURKY" tvg-logo="http://tayaara.store:80/images/marvel/1722459922124.jpg" group-title="SHAHID Live",DRAMA TURKY
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/358676
-#EXTINF:-1 tvg-id="" tvg-name="Movies Action" tvg-logo="http://tayaara.store:80/images/marvel/1719411913433.jpg" group-title="SHAHID Live",Movies Action
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/352140
-#EXTINF:-1 tvg-id="" tvg-name="MBC MASR DRAMA" tvg-logo="" group-title="MBC CHANNELS",MBC MASR DRAMA
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/401613
-#EXTINF:-1 tvg-id="" tvg-name="MBC MASR DRAMA HD" tvg-logo="http://tayaara.store:80/images/marvel/1740127168251.jpg" group-title="MBC CHANNELS",MBC MASR DRAMA HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/401448
-#EXTINF:-1 tvg-id="" tvg-name="MBC PERSIA HD" tvg-logo="" group-title="MBC CHANNELS",MBC PERSIA HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/401442
-#EXTINF:-1 tvg-id="" tvg-name="MBC 1 SD" tvg-logo="http://tayaara.store:80/images/marvel/1716996668227.jpg" group-title="MBC CHANNELS",MBC 1 SD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/269332
-#EXTINF:-1 tvg-id="" tvg-name="MBC 2 4K" tvg-logo="http://tayaara.store:80/images/marvel/1716996696220.jpg" group-title="MBC CHANNELS",MBC 2 4K
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/269331
-#EXTINF:-1 tvg-id="" tvg-name="MBC 4 HD" tvg-logo="http://tayaara.store:80/images/marvel/1716996833129.jpg" group-title="MBC CHANNELS",MBC 4 HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/269329
-#EXTINF:-1 tvg-id="" tvg-name="MBC 5 SD" tvg-logo="http://tayaara.store:80/images/marvel/1716996850169.jpg" group-title="MBC CHANNELS",MBC 5 SD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/269328
-#EXTINF:-1 tvg-id="" tvg-name="MBC BOLLYWOOD SD" tvg-logo="http://tayaara.store:80/images/marvel/1716996881177.jpg" group-title="MBC CHANNELS",MBC BOLLYWOOD SD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/269325
-#EXTINF:-1 tvg-id="" tvg-name="AR: MBC IRAQ SD" tvg-logo="http://tayaara.store:80/images/marvel/1716996922140.jpg" group-title="MBC CHANNELS",AR: MBC IRAQ SD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/269323
-#EXTINF:-1 tvg-id="" tvg-name="Rotana Drama" tvg-logo="http://tayaara.store:80/images/marvel/1716999901181.jpg" group-title="MBC CHANNELS",Rotana Drama
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/267893
-#EXTINF:-1 tvg-id="" tvg-name="MBC 1 HD" tvg-logo="http://tayaara.store:80/images/marvel/1716996676373.jpg" group-title="MBC CHANNELS",MBC 1 HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/99366
-#EXTINF:-1 tvg-id="" tvg-name="MBC 2 HD" tvg-logo="http://tayaara.store:80/images/marvel/1716996704226.jpg" group-title="MBC CHANNELS",MBC 2 HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/99367
-#EXTINF:-1 tvg-id="" tvg-name="MBC 3 HD" tvg-logo="http://tayaara.store:80/images/marvel/1716996734217.jpg" group-title="MBC CHANNELS",MBC 3 HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/99368
-#EXTINF:-1 tvg-id="" tvg-name="MBC 4 FHD" tvg-logo="http://tayaara.store:80/images/marvel/1716996825264.jpg" group-title="MBC CHANNELS",MBC 4 FHD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/99369
-#EXTINF:-1 tvg-id="" tvg-name="MBC 5 HD" tvg-logo="http://tayaara.store:80/images/marvel/1716996860349.jpg" group-title="MBC CHANNELS",MBC 5 HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/99370
-#EXTINF:-1 tvg-id="" tvg-name="MBC MASR 1 FHD" tvg-logo="http://tayaara.store:80/images/marvel/1716997177275.jpg" group-title="MBC CHANNELS",MBC MASR 1 FHD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/456981
-#EXTINF:-1 tvg-id="" tvg-name="MBC MASR 1 FHD" tvg-logo="http://tayaara.store:80/images/marvel/1716997177275.jpg" group-title="MBC CHANNELS",MBC MASR 1 FHD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/99359
-#EXTINF:-1 tvg-id="" tvg-name="MBC MASR 2 FHD" tvg-logo="http://tayaara.store:80/images/marvel/1717000264159.jpg" group-title="MBC CHANNELS",MBC MASR 2 FHD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/456980
-#EXTINF:-1 tvg-id="" tvg-name="MBC MASR 2 FHD" tvg-logo="http://tayaara.store:80/images/marvel/1717000264159.jpg" group-title="MBC CHANNELS",MBC MASR 2 FHD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/99361
-#EXTINF:-1 tvg-id="" tvg-name="MBC DRAMA HD" tvg-logo="http://tayaara.store:80/images/marvel/1716996966251.jpg" group-title="MBC CHANNELS",MBC DRAMA HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/99362
-#EXTINF:-1 tvg-id="" tvg-name="MBC DRAMA+ HD" tvg-logo="http://tayaara.store:80/images/marvel/1716997157434.jpg" group-title="MBC CHANNELS",MBC DRAMA+ HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/99347
-#EXTINF:-1 tvg-id="" tvg-name="MBC VARIETY FHD" tvg-logo="http://tayaara.store:80/images/marvel/1717000284312.jpg" group-title="MBC CHANNELS",MBC VARIETY FHD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/99364
-#EXTINF:-1 tvg-id="" tvg-name="MBC IRAQ HD" tvg-logo="http://tayaara.store:80/images/marvel/1716996932244.jpg" group-title="MBC CHANNELS",MBC IRAQ HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/99365
-#EXTINF:-1 tvg-id="" tvg-name="MBC MAX FHD" tvg-logo="http://tayaara.store:80/images/marvel/1717000341110.jpg" group-title="MBC CHANNELS",MBC MAX FHD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/99371
-#EXTINF:-1 tvg-id="" tvg-name="MBC ACTION FHD" tvg-logo="http://tayaara.store:80/images/marvel/1717000429213.jpg" group-title="MBC CHANNELS",MBC ACTION FHD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/99372
-#EXTINF:-1 tvg-id="" tvg-name="MBC BOLLYWOOD HD" tvg-logo="http://tayaara.store:80/images/marvel/1716996888475.jpg" group-title="MBC CHANNELS",MBC BOLLYWOOD HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/99373
-#EXTINF:-1 tvg-id="" tvg-name="ZEE ALWAN HD" tvg-logo="http://tayaara.store:80/images/marvel/1716999936461.jpg" group-title="MBC CHANNELS",ZEE ALWAN HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/261263
-#EXTINF:-1 tvg-id="" tvg-name="ZEE ALWAN SD" tvg-logo="http://tayaara.store:80/images/marvel/1716999929299.jpg" group-title="MBC CHANNELS",ZEE ALWAN SD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/261539
-#EXTINF:-1 tvg-id="" tvg-name="Rotana Cinema EGY 4K" tvg-logo="http://tayaara.store:80/images/marvel/1717000475460.jpg" group-title="MBC CHANNELS",Rotana Cinema EGY 4K
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/102723
-#EXTINF:-1 tvg-id="" tvg-name="ROTANA CINEMA KSA HD" tvg-logo="http://tayaara.store:80/images/marvel/1717000471304.jpg" group-title="MBC CHANNELS",ROTANA CINEMA KSA HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/102722
-#EXTINF:-1 tvg-id="" tvg-name="ROTANA DRAMA HD" tvg-logo="http://tayaara.store:80/images/marvel/1717000139137.jpg" group-title="MBC CHANNELS",ROTANA DRAMA HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/102726
-#EXTINF:-1 tvg-id="" tvg-name="ROTANA +" tvg-logo="http://tayaara.store:80/images/marvel/1717000080147.jpg" group-title="MBC CHANNELS",ROTANA +
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/102727
-#EXTINF:-1 tvg-id="" tvg-name="ROTANA COMEDY HD" tvg-logo="http://tayaara.store:80/images/marvel/1717000197440.jpg" group-title="MBC CHANNELS",ROTANA COMEDY HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/102725
-#EXTINF:-1 tvg-id="" tvg-name="ROTANA CLASSIC HD" tvg-logo="http://tayaara.store:80/images/marvel/1717000234136.jpg" group-title="MBC CHANNELS",ROTANA CLASSIC HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/102724
-#EXTINF:-1 tvg-id="" tvg-name="ROTANA KIDS" tvg-logo="http://tayaara.store:80/images/marvel/1716999962162.jpg" group-title="MBC CHANNELS",ROTANA KIDS
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/102729
-#EXTINF:-1 tvg-id="" tvg-name="Rotana Khalijia FHD" tvg-logo="http://tayaara.store:80/images/marvel/1716999992349.jpg" group-title="MBC CHANNELS",Rotana Khalijia FHD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/102728
-#EXTINF:-1 tvg-id="" tvg-name="OSN YA HALA" tvg-logo="http://tayaara.store:80/images/marvel/1717004633423.jpg" group-title="OSN HD ",OSN YA HALA
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/273005
-#EXTINF:-1 tvg-id="" tvg-name="OSN YA HALA ARABI" tvg-logo="http://tayaara.store:80/images/marvel/1717004683168.jpg" group-title="OSN HD ",OSN YA HALA ARABI
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/273004
-#EXTINF:-1 tvg-id="" tvg-name="OSN YA HALA AFLAM" tvg-logo="http://tayaara.store:80/images/marvel/1717004708319.jpg" group-title="OSN HD ",OSN YA HALA AFLAM
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/273003
-#EXTINF:-1 tvg-id="" tvg-name="OSN Alfa Musalsalat HD" tvg-logo="http://tayaara.store:80/images/marvel/1717004823210.jpg" group-title="OSN HD ",OSN Alfa Musalsalat HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/273002
-#EXTINF:-1 tvg-id="" tvg-name="OSN Alfa Musalsalat 2 HD" tvg-logo="http://tayaara.store:80/images/marvel/1717403822366.jpg" group-title="OSN HD ",OSN Alfa Musalsalat 2 HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/273001
-#EXTINF:-1 tvg-id="" tvg-name="OSN Alfa Cinema 1 HD" tvg-logo="http://tayaara.store:80/images/marvel/1717403834484.jpg" group-title="OSN HD ",OSN Alfa Cinema 1 HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/273000
-#EXTINF:-1 tvg-id="" tvg-name="OSN Alfa Cinema 2 HD" tvg-logo="http://tayaara.store:80/images/marvel/1717403843473.jpg" group-title="OSN HD ",OSN Alfa Cinema 2 HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272999
-#EXTINF:-1 tvg-id="" tvg-name="OSN Alfa AlFann HD" tvg-logo="http://tayaara.store:80/images/marvel/1729181602427.jpg" group-title="OSN HD ",OSN Alfa AlFann HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/366090
-#EXTINF:-1 tvg-id="" tvg-name="OSN Alfa Al Safwa HD" tvg-logo="http://tayaara.store:80/images/marvel/1729181576488.jpg" group-title="OSN HD ",OSN Alfa Al Safwa HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/366089
-#EXTINF:-1 tvg-id="" tvg-name="OSN STAR MOVIES" tvg-logo="http://tayaara.store:80/images/marvel/1717403850119.jpg" group-title="OSN HD ",OSN STAR MOVIES
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272998
-#EXTINF:-1 tvg-id="" tvg-name="OSN Alfa Alyoum HD" tvg-logo="http://tayaara.store:80/images/marvel/1717403859136.jpg" group-title="OSN HD ",OSN Alfa Alyoum HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272996
-#EXTINF:-1 tvg-id="" tvg-name="OSN Alfa Music Now HD" tvg-logo="http://tayaara.store:80/images/marvel/1717403865185.jpg" group-title="OSN HD ",OSN Alfa Music Now HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272994
-#EXTINF:-1 tvg-id="" tvg-name="OSN FANN" tvg-logo="http://tayaara.store:80/images/marvel/1717403872268.jpg" group-title="OSN HD ",OSN FANN
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272993
-#EXTINF:-1 tvg-id="" tvg-name="OSN MOVIES PREMIERE HD" tvg-logo="http://tayaara.store:80/images/marvel/1717005599311.jpg" group-title="OSN HD ",OSN MOVIES PREMIERE HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272990
-#EXTINF:-1 tvg-id="" tvg-name="OSN MOVIES HOLYWOOD" tvg-logo="http://tayaara.store:80/images/marvel/1717404011429.jpg" group-title="OSN HD ",OSN MOVIES HOLYWOOD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272989
-#EXTINF:-1 tvg-id="" tvg-name="OSN Family HD" tvg-logo="http://tayaara.store:80/images/marvel/1729182338191.jpg" group-title="OSN HD ",OSN Family HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/366103
-#EXTINF:-1 tvg-id="" tvg-name="OSN Showcase Classic HD" tvg-logo="http://tayaara.store:80/images/marvel/1729181993208.jpg" group-title="OSN HD ",OSN Showcase Classic HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/366102
-#EXTINF:-1 tvg-id="" tvg-name="OSN Crime HD" tvg-logo="http://tayaara.store:80/images/marvel/1729182049124.jpg" group-title="OSN HD ",OSN Crime HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/366101
-#EXTINF:-1 tvg-id="" tvg-name="OSN Crime Investigation HD" tvg-logo="http://tayaara.store:80/images/marvel/1729182215452.jpg" group-title="OSN HD ",OSN Crime Investigation HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/366100
-#EXTINF:-1 tvg-id="" tvg-name="OSN TV One HD" tvg-logo="http://tayaara.store:80/images/marvel/1729182275353.jpg" group-title="OSN HD ",OSN TV One HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/366099
-#EXTINF:-1 tvg-id="" tvg-name="OSN WWE" tvg-logo="http://tayaara.store:80/images/marvel/1729182306139.jpg" group-title="OSN HD ",OSN WWE
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/366098
-#EXTINF:-1 tvg-id="" tvg-name="OSN Now HD" tvg-logo="http://tayaara.store:80/images/marvel/1729182034205.jpg" group-title="OSN HD ",OSN Now HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/366097
-#EXTINF:-1 tvg-id="" tvg-name="OSN News HD" tvg-logo="http://tayaara.store:80/images/marvel/1729182102491.jpg" group-title="OSN HD ",OSN News HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/366096
-#EXTINF:-1 tvg-id="" tvg-name="OSN Fatafeat HD" tvg-logo="http://tayaara.store:80/images/marvel/1729181899236.jpg" group-title="OSN HD ",OSN Fatafeat HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/366095
-#EXTINF:-1 tvg-id="" tvg-name="OSN Animal HD" tvg-logo="http://tayaara.store:80/images/marvel/1729181875293.jpg" group-title="OSN HD ",OSN Animal HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/366094
-#EXTINF:-1 tvg-id="" tvg-name="OSN Moonbug Kids" tvg-logo="http://tayaara.store:80/images/marvel/1729181847456.jpg" group-title="OSN HD ",OSN Moonbug Kids
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/366093
-#EXTINF:-1 tvg-id="" tvg-name="OSN Nick Toon HD" tvg-logo="http://tayaara.store:80/images/marvel/1729181756335.jpg" group-title="OSN HD ",OSN Nick Toon HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/366092
-#EXTINF:-1 tvg-id="" tvg-name="OSN Cartoon Network HD" tvg-logo="http://tayaara.store:80/images/marvel/1729181629329.jpg" group-title="OSN HD ",OSN Cartoon Network HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/366091
-#EXTINF:-1 tvg-id="" tvg-name="OSN ACTION" tvg-logo="http://tayaara.store:80/images/marvel/1717404046412.jpg" group-title="OSN HD ",OSN ACTION
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272988
-#EXTINF:-1 tvg-id="" tvg-name="OSN SHOWCASE" tvg-logo="http://tayaara.store:80/images/marvel/1717005212304.jpg" group-title="OSN HD ",OSN SHOWCASE
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272987
-#EXTINF:-1 tvg-id="" tvg-name="OSN COMEDY" tvg-logo="http://tayaara.store:80/images/marvel/1717005203344.jpg" group-title="OSN HD ",OSN COMEDY
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272986
-#EXTINF:-1 tvg-id="" tvg-name="OSN WOMAN" tvg-logo="http://tayaara.store:80/images/marvel/1717005701168.jpg" group-title="OSN HD ",OSN WOMAN
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272985
-#EXTINF:-1 tvg-id="" tvg-name="OSN LIVING" tvg-logo="http://tayaara.store:80/images/marvel/1717005753173.jpg" group-title="OSN HD ",OSN LIVING
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272984
-#EXTINF:-1 tvg-id="" tvg-name="OSN TLC" tvg-logo="http://tayaara.store:80/images/marvel/1717005194100.jpg" group-title="OSN HD ",OSN TLC
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272983
-#EXTINF:-1 tvg-id="" tvg-name="OSN E!" tvg-logo="http://tayaara.store:80/images/marvel/1717005189449.jpg" group-title="OSN HD ",OSN E!
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272982
-#EXTINF:-1 tvg-id="" tvg-name="OSN FASHION TV" tvg-logo="http://tayaara.store:80/images/marvel/1717005890223.jpg" group-title="OSN HD ",OSN FASHION TV
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272980
-#EXTINF:-1 tvg-id="" tvg-name="OSN DISNEY CHANNEL" tvg-logo="http://tayaara.store:80/images/marvel/1717005841238.jpg" group-title="OSN HD ",OSN DISNEY CHANNEL
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272979
-#EXTINF:-1 tvg-id="" tvg-name="OSN DISNEY JUNIOR" tvg-logo="http://tayaara.store:80/images/marvel/1717005943241.jpg" group-title="OSN HD ",OSN DISNEY JUNIOR
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272977
-#EXTINF:-1 tvg-id="" tvg-name="OSN KIDS" tvg-logo="http://tayaara.store:80/images/marvel/1717005379315.jpg" group-title="OSN HD ",OSN KIDS
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272976
-#EXTINF:-1 tvg-id="" tvg-name="OSN KIDS ZONE TV" tvg-logo="http://tayaara.store:80/images/marvel/1717404165424.jpg" group-title="OSN HD ",OSN KIDS ZONE TV
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272975
-#EXTINF:-1 tvg-id="" tvg-name="OSN NICK JR" tvg-logo="http://tayaara.store:80/images/marvel/1717404174279.jpg" group-title="OSN HD ",OSN NICK JR
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272974
-#EXTINF:-1 tvg-id="" tvg-name="OSN NICKELODEON" tvg-logo="http://tayaara.store:80/images/marvel/1717005459218.jpg" group-title="OSN HD ",OSN NICKELODEON
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272973
-#EXTINF:-1 tvg-id="" tvg-name="National Geographic Abu Dhabi" tvg-logo="http://tayaara.store:80/images/marvel/1717004629387.jpg" group-title="OSN HD ",National Geographic Abu Dhabi
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/318063
-#EXTINF:-1 tvg-id="" tvg-name="OSN NAT GEO WILD" tvg-logo="http://tayaara.store:80/images/marvel/1717404212469.jpg" group-title="OSN HD ",OSN NAT GEO WILD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272971
-#EXTINF:-1 tvg-id="" tvg-name="OSN NAT GEO" tvg-logo="http://tayaara.store:80/images/marvel/1717404265419.jpg" group-title="OSN HD ",OSN NAT GEO
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272970
-#EXTINF:-1 tvg-id="" tvg-name="OSN NAT GEO PEOPLE" tvg-logo="http://tayaara.store:80/images/marvel/1717404314281.jpg" group-title="OSN HD ",OSN NAT GEO PEOPLE
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272969
-#EXTINF:-1 tvg-id="" tvg-name="OSN DISCOVERY" tvg-logo="http://tayaara.store:80/images/marvel/1717404333460.jpg" group-title="OSN HD ",OSN DISCOVERY
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272968
-#EXTINF:-1 tvg-id="" tvg-name="OSN DISCOVERY SCIENCE" tvg-logo="http://tayaara.store:80/images/marvel/1717404371171.jpg" group-title="OSN HD ",OSN DISCOVERY SCIENCE
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272967
-#EXTINF:-1 tvg-id="" tvg-name="OSN DISCOVERY ID" tvg-logo="http://tayaara.store:80/images/marvel/1717404391309.jpg" group-title="OSN HD ",OSN DISCOVERY ID
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272966
-#EXTINF:-1 tvg-id="" tvg-name="OSN HISTORY" tvg-logo="http://tayaara.store:80/images/marvel/1717404417495.jpg" group-title="OSN HD ",OSN HISTORY
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272965
-#EXTINF:-1 tvg-id="" tvg-name="OSN H2 HD" tvg-logo="http://tayaara.store:80/images/marvel/1717404473188.jpg" group-title="OSN HD ",OSN H2 HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272964
-#EXTINF:-1 tvg-id="" tvg-name="OSN Meezze HD" tvg-logo="http://tayaara.store:80/images/marvel/1717005330212.jpg" group-title="OSN HD ",OSN Meezze HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272963
-#EXTINF:-1 tvg-id="" tvg-name="OSN- POP UP FHD" tvg-logo="http://tayaara.store:80/images/marvel/1717404540256.jpg" group-title="OSN HD ",OSN- POP UP FHD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203193
-#EXTINF:-1 tvg-id="" tvg-name="OSN- MOVIES FHD" tvg-logo="http://tayaara.store:80/images/marvel/1717404612264.jpg" group-title="OSN HD ",OSN- MOVIES FHD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203192
-#EXTINF:-1 tvg-id="" tvg-name="OSN- Movies First FHD" tvg-logo="http://tayaara.store:80/images/marvel/1717404689218.jpg" group-title="OSN HD ",OSN- Movies First FHD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203191
-#EXTINF:-1 tvg-id="" tvg-name="OSN- Action HD" tvg-logo="http://tayaara.store:80/images/marvel/1717404807285.jpg" group-title="OSN HD ",OSN- Action HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203190
-#EXTINF:-1 tvg-id="" tvg-name="OSN- Movies First +2 HD" tvg-logo="http://tayaara.store:80/images/marvel/1717404848419.jpg" group-title="OSN HD ",OSN- Movies First +2 HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203189
-#EXTINF:-1 tvg-id="" tvg-name="OSN- On Demand FHD" tvg-logo="http://tayaara.store:80/images/marvel/1717404902299.jpg" group-title="OSN HD ",OSN- On Demand FHD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203188
-#EXTINF:-1 tvg-id="" tvg-name="OSN Family" tvg-logo="http://tayaara.store:80/images/marvel/1717404924396.jpg" group-title="OSN HD ",OSN Family
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203187
-#EXTINF:-1 tvg-id="" tvg-name="OSN- KIDS FHD" tvg-logo="http://tayaara.store:80/images/marvel/1717404949229.jpg" group-title="OSN HD ",OSN- KIDS FHD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203186
-#EXTINF:-1 tvg-id="" tvg-name="OSN BOX OFFICE 1" tvg-logo="http://tayaara.store:80/images/marvel/1717404510159.jpg" group-title="OSN HD ",OSN BOX OFFICE 1
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/229403
-#EXTINF:-1 tvg-id="" tvg-name="OSN- PLAY MOVIES 1 FHD" tvg-logo="http://tayaara.store:80/images/marvel/1717404982289.jpg" group-title="OSN HD ",OSN- PLAY MOVIES 1 FHD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203185
-#EXTINF:-1 tvg-id="" tvg-name="OSN- PLAY MOVIES 2 FHD" tvg-logo="http://tayaara.store:80/images/marvel/1717405061262.jpg" group-title="OSN HD ",OSN- PLAY MOVIES 2 FHD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203184
-#EXTINF:-1 tvg-id="" tvg-name="OSN- PLAY MOVIES 3 FHD" tvg-logo="http://tayaara.store:80/images/marvel/1717405068433.jpg" group-title="OSN HD ",OSN- PLAY MOVIES 3 FHD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203183
-#EXTINF:-1 tvg-id="" tvg-name="OSN- PLAY MOVIES 4 FHD" tvg-logo="http://tayaara.store:80/images/marvel/1717405073432.jpg" group-title="OSN HD ",OSN- PLAY MOVIES 4 FHD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203182
-#EXTINF:-1 tvg-id="" tvg-name="OSN- PLAY CINEMA 1 FHD" tvg-logo="http://tayaara.store:80/images/marvel/1717405078104.jpg" group-title="OSN HD ",OSN- PLAY CINEMA 1 FHD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203181
-#EXTINF:-1 tvg-id="" tvg-name="OSN- PLAY CINEMA 2 FHD" tvg-logo="http://tayaara.store:80/images/marvel/1717405091497.jpg" group-title="OSN HD ",OSN- PLAY CINEMA 2 FHD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203180
-#EXTINF:-1 tvg-id="" tvg-name="OSN- PLAY CINEMA 3 FHD" tvg-logo="http://tayaara.store:80/images/marvel/1717405101432.jpg" group-title="OSN HD ",OSN- PLAY CINEMA 3 FHD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203179
-#EXTINF:-1 tvg-id="" tvg-name="OSN- PLAY CINEMA 4 FHD" tvg-logo="http://tayaara.store:80/images/marvel/1717405108389.jpg" group-title="OSN HD ",OSN- PLAY CINEMA 4 FHD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203178
-#EXTINF:-1 tvg-id="" tvg-name="OSN- Enigma FHD" tvg-logo="http://tayaara.store:80/images/marvel/1717405196437.jpg" group-title="OSN HD ",OSN- Enigma FHD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203177
-#EXTINF:-1 tvg-id="" tvg-name="OSN- Movies Comedy FHD" tvg-logo="http://tayaara.store:80/images/marvel/1717405229270.jpg" group-title="OSN HD ",OSN- Movies Comedy FHD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203176
-#EXTINF:-1 tvg-id="" tvg-name="OSN Art Cinema" tvg-logo="http://tayaara.store:80/images/marvel/1717405742108.jpg" group-title="ART CHANNEL",OSN Art Cinema
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/82701
-#EXTINF:-1 tvg-id="" tvg-name="OSN Art Aflam 1" tvg-logo="http://tayaara.store:80/images/marvel/1717405517103.jpg" group-title="ART CHANNEL",OSN Art Aflam 1
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/82702
-#EXTINF:-1 tvg-id="" tvg-name="OSN Art Aflam 2" tvg-logo="http://tayaara.store:80/images/marvel/1717405680343.jpg" group-title="ART CHANNEL",OSN Art Aflam 2
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/82703
-#EXTINF:-1 tvg-id="" tvg-name="OSN Art Hekayat 1" tvg-logo="http://tayaara.store:80/images/marvel/1717405420448.jpg" group-title="ART CHANNEL",OSN Art Hekayat 1
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/82704
-#EXTINF:-1 tvg-id="" tvg-name="OSN Art Hekayat 2" tvg-logo="http://tayaara.store:80/images/marvel/1717405446315.jpg" group-title="ART CHANNEL",OSN Art Hekayat 2
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/82705
-#EXTINF:-1 tvg-id="" tvg-name="beIN MOVIES PREMIERE 1 HD" tvg-logo="https://tayaara.store/live/int/4.jpg" group-title="beIN ENTERTAINMENT",beIN MOVIES PREMIERE 1 HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/101132
-#EXTINF:-1 tvg-id="" tvg-name="beIN MOVIES ACTION 2 HD" tvg-logo="https://tayaara.store/live/int/5.jpg" group-title="beIN ENTERTAINMENT",beIN MOVIES ACTION 2 HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/101134
-#EXTINF:-1 tvg-id="" tvg-name="beIN MOVIES 3 HD" tvg-logo="https://tayaara.store/live/int/6.jpg" group-title="beIN ENTERTAINMENT",beIN MOVIES 3 HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/101136
-#EXTINF:-1 tvg-id="" tvg-name="beIN MOVIES 4 HD" tvg-logo="https://tayaara.store/live/int/7.jpg" group-title="beIN ENTERTAINMENT",beIN MOVIES 4 HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/101138
-#EXTINF:-1 tvg-id="" tvg-name="beIN CINEMA HD" tvg-logo="https://tayaara.store/live/int/11.jpg" group-title="beIN ENTERTAINMENT",beIN CINEMA HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86610
-#EXTINF:-1 tvg-id="" tvg-name="beIN BOX OFFICE 1 HD" tvg-logo="https://tayaara.store/live/int/13.jpg" group-title="beIN ENTERTAINMENT",beIN BOX OFFICE 1 HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86614
-#EXTINF:-1 tvg-id="" tvg-name="beIN BOX OFFICE 2 HD" tvg-logo="http://tayaara.store:80/images/marvel/1715629484329.jpg" group-title="beIN ENTERTAINMENT",beIN BOX OFFICE 2 HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/334533
-#EXTINF:-1 tvg-id="" tvg-name="beIN SERIES 1 HD" tvg-logo="https://tayaara.store/live/int/8.jpg" group-title="beIN ENTERTAINMENT",beIN SERIES 1 HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/101142
-#EXTINF:-1 tvg-id="" tvg-name="beIN SERIES 2 HD" tvg-logo="https://tayaara.store/live/int/9.jpg" group-title="beIN ENTERTAINMENT",beIN SERIES 2 HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/101144
-#EXTINF:-1 tvg-id="" tvg-name="beIN DRAMA 1 HD" tvg-logo="https://tayaara.store/live/int/3.jpg" group-title="beIN ENTERTAINMENT",beIN DRAMA 1 HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/101140
-#EXTINF:-1 tvg-id="" tvg-name="beIN FOX MOVIES HD" tvg-logo="https://tayaara.store/live/int/10.jpg" group-title="beIN ENTERTAINMENT",beIN FOX MOVIES HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86609
-#EXTINF:-1 tvg-id="" tvg-name="beIN FOX ACTION MOVIES HD" tvg-logo="https://tayaara.store/live/int/12.jpg" group-title="beIN ENTERTAINMENT",beIN FOX ACTION MOVIES HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86612
-#EXTINF:-1 tvg-id="" tvg-name="beIN FOX LIFE HD" tvg-logo="https://tayaara.store/live/int/14.jpg" group-title="beIN ENTERTAINMENT",beIN FOX LIFE HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86615
-#EXTINF:-1 tvg-id="" tvg-name="beIN STAR MOVIES HD" tvg-logo="https://tayaara.store/live/int/17.jpg" group-title="beIN ENTERTAINMENT",beIN STAR MOVIES HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86617
-#EXTINF:-1 tvg-id="" tvg-name="DTX" tvg-logo="https://tayaara.store/live/int/29.jpg" group-title="beIN ENTERTAINMENT",DTX
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/124144
-#EXTINF:-1 tvg-id="" tvg-name="BEIN ANIMAL PLANET" tvg-logo="https://tayaara.store/live/int/31.jpg" group-title="beIN ENTERTAINMENT",BEIN ANIMAL PLANET
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86618
-#EXTINF:-1 tvg-id="" tvg-name="BEIN FOOD NETWORK HD" tvg-logo="https://tayaara.store/live/int/19.jpg" group-title="beIN ENTERTAINMENT",BEIN FOOD NETWORK HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86619
-#EXTINF:-1 tvg-id="" tvg-name="Bein Nat Geo HD" tvg-logo="https://tayaara.store/live/int/20.jpg" group-title="beIN ENTERTAINMENT",Bein Nat Geo HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86622
-#EXTINF:-1 tvg-id="" tvg-name="NATGEO WILD HD" tvg-logo="https://tayaara.store/live/int/21.jpg" group-title="beIN ENTERTAINMENT",NATGEO WILD HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86623
-#EXTINF:-1 tvg-id="" tvg-name="BEIN  GOURMET" tvg-logo="https://tayaara.store/live/int/15.jpg" group-title="beIN ENTERTAINMENT",BEIN  GOURMET
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86625
-#EXTINF:-1 tvg-id="" tvg-name="Bein BBC Earth HD" tvg-logo="https://tayaara.store/live/int/32.jpg" group-title="beIN ENTERTAINMENT",Bein BBC Earth HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86626
-#EXTINF:-1 tvg-id="" tvg-name="BEIN OUTDOOR" tvg-logo="https://tayaara.store/live/int/22.jpg" group-title="beIN ENTERTAINMENT",BEIN OUTDOOR
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86628
-#EXTINF:-1 tvg-id="" tvg-name="BEIN DREAM WOKRS" tvg-logo="https://tayaara.store/live/int/23.jpg" group-title="beIN ENTERTAINMENT",BEIN DREAM WOKRS
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86629
-#EXTINF:-1 tvg-id="" tvg-name="BEIN FATAFEAT" tvg-logo="https://tayaara.store/live/int/24.jpg" group-title="beIN ENTERTAINMENT",BEIN FATAFEAT
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86632
-#EXTINF:-1 tvg-id="" tvg-name="beIN HGTV" tvg-logo="https://tayaara.store/live/int/16.jpg" group-title="beIN ENTERTAINMENT",beIN HGTV
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86759
-#EXTINF:-1 tvg-id="" tvg-name="Bein Boomerang HD" tvg-logo="https://tayaara.store/live/int/27.jpg" group-title="beIN ENTERTAINMENT",Bein Boomerang HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86760
-#EXTINF:-1 tvg-id="" tvg-name="Bein Baraem HD" tvg-logo="https://tayaara.store/live/int/30.jpg" group-title="beIN ENTERTAINMENT",Bein Baraem HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86762
-#EXTINF:-1 tvg-id="" tvg-name="VIP AR: beIN DRAMA 4K" tvg-logo="https://tayaara.store/live/int/3.jpg" group-title="beIN ENTERTAINMENT",VIP AR: beIN DRAMA 4K
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/204737
-#EXTINF:-1 tvg-id="" tvg-name="Nat Geo People HD" tvg-logo="https://tayaara.store/live/int/28.jpg" group-title="beIN ENTERTAINMENT",Nat Geo People HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/92376
-#EXTINF:-1 tvg-id="" tvg-name="Majestic WWE" tvg-logo="http://tayaara.store:80/images/marvel/1716990099438.jpg" group-title="MAJESTIC CHANNELS",Majestic WWE
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/102204
-#EXTINF:-1 tvg-id="" tvg-name="Majestic TOM AND JERRY" tvg-logo="http://tayaara.store:80/images/marvel/1716990095367.jpg" group-title="MAJESTIC CHANNELS",Majestic TOM AND JERRY
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/102206
-#EXTINF:-1 tvg-id="" tvg-name="Shasha TV SD" tvg-logo="http://tayaara.store:80/images/marvel/1759165650143.jpg" group-title="SHASHA SPORTS ",Shasha TV SD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490718
-#EXTINF:-1 tvg-id="" tvg-name="Shasha TV 2 SD" tvg-logo="http://tayaara.store:80/images/marvel/1759165650143.jpg" group-title="SHASHA SPORTS ",Shasha TV 2 SD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490719
-#EXTINF:-1 tvg-id="" tvg-name="Shasha TV HD" tvg-logo="http://tayaara.store:80/images/marvel/1759165650143.jpg" group-title="SHASHA SPORTS ",Shasha TV HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490720
-#EXTINF:-1 tvg-id="" tvg-name="Shasha TV 2 HD" tvg-logo="http://tayaara.store:80/images/marvel/1759165650143.jpg" group-title="SHASHA SPORTS ",Shasha TV 2 HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490721
-#EXTINF:-1 tvg-id="" tvg-name="Shasha TV 4k" tvg-logo="http://tayaara.store:80/images/marvel/1759165650143.jpg" group-title="SHASHA SPORTS ",Shasha TV 4k
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490723
-#EXTINF:-1 tvg-id="" tvg-name="Shasha TV 2 4K" tvg-logo="http://tayaara.store:80/images/marvel/1759165650143.jpg" group-title="SHASHA SPORTS ",Shasha TV 2 4K
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490722
-#EXTINF:-1 tvg-id="" tvg-name="THMANYAH 1 SD" tvg-logo="http://tayaara.store/images/marvel/1754826018182.jpg" group-title="THMANYAH SPORTS",THMANYAH 1 SD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/474870
-#EXTINF:-1 tvg-id="" tvg-name="THMANYAH 1 HD" tvg-logo="http://tayaara.store:80/images/marvel/1754826004317.jpg" group-title="THMANYAH SPORTS",THMANYAH 1 HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/474871
-#EXTINF:-1 tvg-id="" tvg-name="THMANYAH 1 FHD" tvg-logo="http://tayaara.store:80/images/marvel/1754826018182.jpg" group-title="THMANYAH SPORTS",THMANYAH 1 FHD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/474872
-#EXTINF:-1 tvg-id="" tvg-name="THMANYAH 2 SD" tvg-logo="http://tayaara.store/images/marvel/1754826018182.jpg" group-title="THMANYAH SPORTS",THMANYAH 2 SD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/474866
-#EXTINF:-1 tvg-id="" tvg-name="THMANYAH 2 HD" tvg-logo="http://tayaara.store/images/marvel/1754826018182.jpg" group-title="THMANYAH SPORTS",THMANYAH 2 HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/474867
-#EXTINF:-1 tvg-id="" tvg-name="THMANYAH 2 FHD" tvg-logo="http://tayaara.store/images/marvel/1754826018182.jpg" group-title="THMANYAH SPORTS",THMANYAH 2 FHD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/474868
-#EXTINF:-1 tvg-id="" tvg-name="THMANYAH 3 SD" tvg-logo="http://tayaara.store/images/marvel/1754826018182.jpg" group-title="THMANYAH SPORTS",THMANYAH 3 SD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/474862
-#EXTINF:-1 tvg-id="" tvg-name="THMANYAH 3 HD" tvg-logo="http://tayaara.store/images/marvel/1754826018182.jpg" group-title="THMANYAH SPORTS",THMANYAH 3 HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/474863
-#EXTINF:-1 tvg-id="" tvg-name="THMANYAH 3 FHD" tvg-logo="http://tayaara.store/images/marvel/1754826018182.jpg" group-title="THMANYAH SPORTS",THMANYAH 3 FHD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/474864
-#EXTINF:-1 tvg-id="" tvg-name="Shahid Sport 1 SD" tvg-logo="http://tayaara.store/images/marvel/1756644281446.jpg" group-title="SHAHID SPORTS ",Shahid Sport 1 SD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490733
-#EXTINF:-1 tvg-id="" tvg-name="Shahid Sport 2 SD" tvg-logo="http://tayaara.store/images/marvel/1756644281446.jpg" group-title="SHAHID SPORTS ",Shahid Sport 2 SD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490730
-#EXTINF:-1 tvg-id="" tvg-name="Shahid Sport 3 SD" tvg-logo="http://tayaara.store/images/marvel/1756644281446.jpg" group-title="SHAHID SPORTS ",Shahid Sport 3 SD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490727
-#EXTINF:-1 tvg-id="" tvg-name="Shahid Sport 4 SD" tvg-logo="http://tayaara.store/images/marvel/1756644281446.jpg" group-title="SHAHID SPORTS ",Shahid Sport 4 SD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490724
-#EXTINF:-1 tvg-id="" tvg-name="Shahid Sport 1 HD" tvg-logo="http://tayaara.store/images/marvel/1756644281446.jpg" group-title="SHAHID SPORTS ",Shahid Sport 1 HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490734
-#EXTINF:-1 tvg-id="" tvg-name="Shahid Sport 2 HD" tvg-logo="http://tayaara.store/images/marvel/1756644281446.jpg" group-title="SHAHID SPORTS ",Shahid Sport 2 HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490731
-#EXTINF:-1 tvg-id="" tvg-name="Shahid Sport 3 HD" tvg-logo="http://tayaara.store/images/marvel/1756644281446.jpg" group-title="SHAHID SPORTS ",Shahid Sport 3 HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490728
-#EXTINF:-1 tvg-id="" tvg-name="Shahid Sport 4 HD" tvg-logo="http://tayaara.store/images/marvel/1756644281446.jpg" group-title="SHAHID SPORTS ",Shahid Sport 4 HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490725
-#EXTINF:-1 tvg-id="" tvg-name="Shahid Sport 1 4k" tvg-logo="http://tayaara.store/images/marvel/1756644281446.jpg" group-title="SHAHID SPORTS ",Shahid Sport 1 4k
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490735
-#EXTINF:-1 tvg-id="" tvg-name="Shahid Sport 2 4K" tvg-logo="http://tayaara.store/images/marvel/1756644281446.jpg" group-title="SHAHID SPORTS ",Shahid Sport 2 4K
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490732
-#EXTINF:-1 tvg-id="" tvg-name="Shahid Sport 3 4k" tvg-logo="http://tayaara.store/images/marvel/1756644281446.jpg" group-title="SHAHID SPORTS ",Shahid Sport 3 4k
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490729
-#EXTINF:-1 tvg-id="" tvg-name="Shahid Sport 4 4k" tvg-logo="http://tayaara.store/images/marvel/1756644281446.jpg" group-title="SHAHID SPORTS ",Shahid Sport 4 4k
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490726
-#EXTINF:-1 tvg-id="" tvg-name="STARZPLAY CricLife 1" tvg-logo="http://tayaara.store:80/images/marvel/1756644791124.jpg" group-title="STARZPLAY SPORTS",STARZPLAY CricLife 1
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/476909
-#EXTINF:-1 tvg-id="" tvg-name="STARZPLAY CricLife 2" tvg-logo="http://tayaara.store:80/images/marvel/1756657867173.jpg" group-title="STARZPLAY SPORTS",STARZPLAY CricLife 2
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/476908
-#EXTINF:-1 tvg-id="" tvg-name="STARZPLAY CricLife 3" tvg-logo="http://tayaara.store:80/images/marvel/1756657900161.jpg" group-title="STARZPLAY SPORTS",STARZPLAY CricLife 3
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/476907
-#EXTINF:-1 tvg-id="" tvg-name="STARZPLAY Criclife max" tvg-logo="http://tayaara.store:80/images/marvel/1756657928479.jpg" group-title="STARZPLAY SPORTS",STARZPLAY Criclife max
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/476906
-#EXTINF:-1 tvg-id="" tvg-name="STARZPLAY GOLF" tvg-logo="http://tayaara.store:80/images/marvel/1756657956159.jpg" group-title="STARZPLAY SPORTS",STARZPLAY GOLF
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/476905
-#EXTINF:-1 tvg-id="" tvg-name="STARZPLAY Sports 1 FHD" tvg-logo="http://tayaara.store/images/marvel/1756644665278.jpg" group-title="STARZPLAY SPORTS",STARZPLAY Sports 1 FHD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/476913
-#EXTINF:-1 tvg-id="" tvg-name="STARZPLAY Sports 2 SD" tvg-logo="http://tayaara.store/images/marvel/1756644665278.jpg" group-title="STARZPLAY SPORTS",STARZPLAY Sports 2 SD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/476912
-#EXTINF:-1 tvg-id="" tvg-name="STARZPLAY Sports 2 HD" tvg-logo="http://tayaara.store/images/marvel/1756644665278.jpg" group-title="STARZPLAY SPORTS",STARZPLAY Sports 2 HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/476911
-#EXTINF:-1 tvg-id="" tvg-name="STARZPLAY Sports 2 FHD" tvg-logo="http://tayaara.store/images/marvel/1756644665278.jpg" group-title="STARZPLAY SPORTS",STARZPLAY Sports 2 FHD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/476910
-#EXTINF:-1 tvg-id="" tvg-name="STARZPLAY Sports 3 SD" tvg-logo="http://tayaara.store:80/images/marvel/1756644665278.jpg" group-title="STARZPLAY SPORTS",STARZPLAY Sports 3 SD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/476918
-#EXTINF:-1 tvg-id="" tvg-name="STARZPLAY Sports 3 HD" tvg-logo="http://tayaara.store/images/marvel/1756644665278.jpg" group-title="STARZPLAY SPORTS",STARZPLAY Sports 3 HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/476917
-#EXTINF:-1 tvg-id="" tvg-name="STARZPLAY Sports 3 FHD" tvg-logo="http://tayaara.store/images/marvel/1756644665278.jpg" group-title="STARZPLAY SPORTS",STARZPLAY Sports 3 FHD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/476916
-#EXTINF:-1 tvg-id="" tvg-name="AL-FAJER TV 1 HD" tvg-logo="http://tayaara.store:80/images/marvel/1716985163331.jpg" group-title="AL FAJER  CHANNELS",AL-FAJER TV 1 HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/262165
-#EXTINF:-1 tvg-id="" tvg-name="AL-FAJER TV 1 FHD" tvg-logo="http://tayaara.store:80/images/marvel/1739356304191.jpg" group-title="AL FAJER  CHANNELS",AL-FAJER TV 1 FHD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/262166
-#EXTINF:-1 tvg-id="" tvg-name="AL-FAJER TV 2 HD" tvg-logo="http://tayaara.store:80/images/marvel/1716985174448.jpg" group-title="AL FAJER  CHANNELS",AL-FAJER TV 2 HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/262162
-#EXTINF:-1 tvg-id="" tvg-name="AL-FAJER TV 2 FHD" tvg-logo="http://tayaara.store:80/images/marvel/1716985169172.jpg" group-title="AL FAJER  CHANNELS",AL-FAJER TV 2 FHD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/262163
-#EXTINF:-1 tvg-id="" tvg-name="AL-FAJER TV 3 HD" tvg-logo="http://tayaara.store:80/images/marvel/1716985187176.jpg" group-title="AL FAJER  CHANNELS",AL-FAJER TV 3 HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/262159
-#EXTINF:-1 tvg-id="" tvg-name="AL-FAJER TV 3 FHD" tvg-logo="http://tayaara.store:80/images/marvel/1716985180242.jpg" group-title="AL FAJER  CHANNELS",AL-FAJER TV 3 FHD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/262160
-#EXTINF:-1 tvg-id="" tvg-name="AL-FAJER TV 4 HD" tvg-logo="http://tayaara.store:80/images/marvel/1716985198107.jpg" group-title="AL FAJER  CHANNELS",AL-FAJER TV 4 HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/262156
-#EXTINF:-1 tvg-id="" tvg-name="AL-FAJER TV 4 FHD" tvg-logo="http://tayaara.store:80/images/marvel/1716985192379.jpg" group-title="AL FAJER  CHANNELS",AL-FAJER TV 4 FHD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/262157
-#EXTINF:-1 tvg-id="" tvg-name="AL-FAJER TV 5 HD" tvg-logo="http://tayaara.store:80/images/marvel/1716985208302.jpg" group-title="AL FAJER  CHANNELS",AL-FAJER TV 5 HD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/262153
-#EXTINF:-1 tvg-id="" tvg-name="AL-FAJER TV 5 FHD" tvg-logo="http://tayaara.store:80/images/marvel/1716985203400.jpg" group-title="AL FAJER  CHANNELS",AL-FAJER TV 5 FHD
-http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/262154
-`;
+        // دالة حفظ القنوات في المتصفح أوتوماتيك
+        function saveChannelsToStorage() {
+            localStorage.setItem('iptv_saved_channels', JSON.stringify(channels));
+        }
 
-        // مصفوفة القنوات
-        let channels = [];
+        // جلب القنوات من الذاكرة المخبأة للمتصفح
+        let channels = JSON.parse(localStorage.getItem('iptv_saved_channels')) || [];
+
+        // دي العلامة السحرية اللي هنحقن جواها القنوات وقت التصدير
+        // لو المتصفح مفيهوش قنوات، هيسحب القنوات المحقونة دي
+        if (channels.length === 0) {
+            const injectedChannels = /*[INJECT_CHANNELS]*/[{"name":"WWE FEED MARVEL  SD","logo":"http://tayaara.store:80/images/marvel/1745087188179.jpg","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/87164"},{"name":"WWE FEED MARVEL  HD","logo":"http://tayaara.store:80/images/marvel/1745087204214.jpg","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/102808"},{"name":"|US| WWE","logo":"http://tayaara.store:80/images/marvel/1717335586141.jpg","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/87170"},{"name":"we can  wwe","logo":"http://tayaara.store:80/images/marvel/1719684640353.jpg","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/395572"},{"name":"IMDB  WWE 1","logo":"http://tayaara.store:80/images/marvel/1718615502226.jpg","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/395571"},{"name":"IMDB   WWE","logo":"http://tayaara.store:80/images/marvel/1718615512213.jpg","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/395570"},{"name":"Majestic  WWE","logo":"http://tayaara.store:80/images/marvel/1716990099438.jpg","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/395569"},{"name":"WATCH  WWE","logo":"http://tayaara.store:80/images/marvel/1719760162433.jpg","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/395568"},{"name":"Usa | Sport: UFC 1 HD","logo":"http://tayaara.store:80/images/marvel/1718441004430.jpg","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/266083"},{"name":"beIN SPORTS 1 LOW H265","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249680"},{"name":"beIN SPORTS 1 Premium LOW H265","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249677"},{"name":"LOCAL beIN SPORTS 2 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/523453"},{"name":"beIN SPORTS 2 LOW H265","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249681"},{"name":"beIN SPORTS 3 LOW H265","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249682"},{"name":"beIN SPORTS 3 Premium LOW H265","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249679"},{"name":"beIN SPORTS 3 SD H265","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249672"},{"name":"LOCAL beIN SPORTS 4 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/523923"},{"name":"beIN SPORTS 4 LOW H265","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249683"},{"name":"beIN SPORTS 4 SD H265","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249673"},{"name":"beIN SPORTS 5 LOW H265","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249684"},{"name":"beIN SPORTS 5 SD H265","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249674"},{"name":"beIN SPORTS 6 LOW H265","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249685"},{"name":"beIN SPORTS 6 SD H265","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249675"},{"name":"beIN SPORTS 7 LOW H265","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249686"},{"name":"beIN SPORTS 7 SD H265","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249676"},{"name":"beIN SPORTS 2 SD H265","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249671"},{"name":"beIN SPORTS 3 Premium SD H265","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249669"},{"name":"beIN SPORTS 2 Premium SD H265","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249668"},{"name":"beIN SPORTS 1 Premium SD H265","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249667"},{"name":"LOCAL beIN SPORTS 9 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249665"},{"name":"LOCAL beIN SPORTS 8 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249664"},{"name":"LOCAL beIN SPORTS 7 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249663"},{"name":"LOCAL beIN SPORTS 6 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249662"},{"name":"LOCAL beIN SPORTS 5 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249661"},{"name":"LOCAL beIN SPORTS 3 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249659"},{"name":"LOCAL beIN SPORTS 1 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249657"},{"name":"Nat Geo People HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/92376"},{"name":"beIN SPORTS 1 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/101092"},{"name":"beIN SPORTS 2 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/101093"},{"name":"beIN SPORTS 3 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/101094"},{"name":"beIN SPORTS 4 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/101095"},{"name":"beIN SPORTS 5 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/101096"},{"name":"beIN SPORTS 6 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/101097"},{"name":"beIN SPORTS 7 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/101098"},{"name":"beIN SPORTS 8 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/101099"},{"name":"beIN SPORTS 9 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/101100"},{"name":"beIN SPORTS GLOBAL 4K","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/221933"},{"name":"beIN SPORTS 1 4K","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214594"},{"name":"beIN SPORTS 2 4K","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214593"},{"name":"beIN SPORTS 3 4K","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214592"},{"name":"beIN SPORTS 4 4K","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214591"},{"name":"beIN SPORTS 5 4K","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214590"},{"name":"beIN SPORTS 6 4K","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214589"},{"name":"beIN SPORTS 7 4K","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214588"},{"name":"beIN SPORTS 8 4K","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214587"},{"name":"beIN SPORTS 9 4K","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214586"},{"name":"ALWAN SPORTS 1 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/485632"},{"name":"ALWAN SPORTS 2 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/485633"},{"name":"ALWAN SPORTS 3 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/485634"},{"name":"ALWAN SPORTS 4 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/485635"},{"name":"ALWAN SPORTS 5 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/485636"},{"name":"ALWAN SPORTS 6 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/485637"},{"name":"beIN SPORTS 1 H.265 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/182208"},{"name":"beIN SPORTS 2 H.265 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/182207"},{"name":"beIN SPORTS 3 H.265 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/182206"},{"name":"beIN SPORTS 4 H.265 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/182205"},{"name":"beIN SPORTS 5 H.265 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/182204"},{"name":"beIN SPORTS 6 H.265 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/182203"},{"name":"beIN SPORTS 7 H.265 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/182202"},{"name":"beIN SPORTS 8 H.265 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/182201"},{"name":"beIN SPORTS 9 H.265 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/182200"},{"name":"beIN SPORTS 1 H.265 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/75625"},{"name":"beIN SPORTS 2 H.265 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/75626"},{"name":"beIN SPORTS 3 H.265 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/75627"},{"name":"beIN SPORTS 4 H.265 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/75628"},{"name":"beIN SPORTS 5 H.265 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/75629"},{"name":"beIN SPORTS 6 H.265 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/75630"},{"name":"beIN SPORTS 7 H.265 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/75631"},{"name":"beIN SPORTS 8 H.265 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/75632"},{"name":"beIN SPORTS 9 H.265 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/75633"},{"name":"beIN SPORTS 1 H.265 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/149327"},{"name":"beIN SPORTS 2 H.265 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/149328"},{"name":"beIN SPORTS 3 H.265 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/502222"},{"name":"beIN SPORTS 4 H.265 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/149330"},{"name":"beIN SPORTS 5 H.265 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/149331"},{"name":"beIN SPORTS 6 H.265 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/149332"},{"name":"beIN SPORTS 7 H.265 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/149333"},{"name":"beIN SPORTS 8 H.265 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/149334"},{"name":"beIN SPORTS 9 H.265 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/149335"},{"name":"beIN SPORTS 1 H.265 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214564"},{"name":"beIN SPORTS 2 H.265 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214563"},{"name":"beIN SPORTS 3 H.265 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214562"},{"name":"beIN SPORTS 4 H.265 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214561"},{"name":"beIN SPORTS 5 H.265 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214560"},{"name":"beIN SPORTS 6 H.265 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214559"},{"name":"beIN SPORTS 7 H.265 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214558"},{"name":"beIN SPORTS 8 H.265 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214557"},{"name":"beIN SPORTS 9 H.265 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214556"},{"name":"beIN SPORTS GLOBAL HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/484979"},{"name":"beIN SPORTS NEWS HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/250335"},{"name":"beIN SPORTS GLOBAL FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/369700"},{"name":"HBO MAX CINEMA 1","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/169274"},{"name":"HBO MAX KIDS 4","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/169236"},{"name":"beIN SPORTS 1 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214574"},{"name":"beIN SPORTS 2 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/523399"},{"name":"beIN SPORTS 3 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214572"},{"name":"beIN SPORTS 4 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214571"},{"name":"beIN SPORTS 5 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214570"},{"name":"beIN SPORTS 6 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214569"},{"name":"beIN SPORTS 7 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214568"},{"name":"beIN SPORTS 8 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214567"},{"name":"beIN SPORTS 9 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214566"},{"name":"beIN SPORTS 1 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214584"},{"name":"beIN SPORTS 2 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214583"},{"name":"beIN SPORTS 3 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214582"},{"name":"beIN SPORTS 4 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214581"},{"name":"beIN SPORTS 5 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214580"},{"name":"beIN SPORTS 6 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214579"},{"name":"beIN SPORTS 7 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214578"},{"name":"beIN SPORTS 8 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214577"},{"name":"beIN SPORTS 9 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214576"},{"name":"beIN SPORTS NBA","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/284023"},{"name":"beIN Xtra SD1","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507687"},{"name":"beIN Xtra HD1","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507678"},{"name":"beIN Xtra 4K 1","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507669"},{"name":"beIN Xtra SD2","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507688"},{"name":"beIN Xtra HD2","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507679"},{"name":"beIN Xtra 4K 2","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507670"},{"name":"beIN Xtra SD3","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507689"},{"name":"beIN Xtra HD3","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507680"},{"name":"beIN Xtra 4K  3","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507671"},{"name":"beIN Xtra SD4","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507690"},{"name":"beIN Xtra HD4","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507681"},{"name":"beIN Xtra 4K 4","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507672"},{"name":"beIN Xtra SD5","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507691"},{"name":"beIN Xtra HD5","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507682"},{"name":"beIN Xtra 4K 5","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507673"},{"name":"beIN Xtra SD6","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507692"},{"name":"beIN Xtra HD6","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507683"},{"name":"beIN Xtra 4K 6","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507674"},{"name":"beIN Xtra SD7","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507693"},{"name":"beIN Xtra HD7","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507684"},{"name":"beIN Xtra 4K 7","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507675"},{"name":"beIN Xtra SD8","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507694"},{"name":"beIN Xtra HD8","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507685"},{"name":"beIN Xtra 4K 8","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507676"},{"name":"beIN Xtra SD9","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507695"},{"name":"beIN Xtra HD9","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507686"},{"name":"beIN Xtra 4K 9","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507677"},{"name":"beIN SPORTS AFC SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/288729"},{"name":"beIN SPORTS AFC HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/288726"},{"name":"beIN SPORTS AFC 4K","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/288725"},{"name":"beIN SPORTS AFC 1 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/322219"},{"name":"beIN SPORTS AFC 1 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/322222"},{"name":"beIN SPORTS AFC 2 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/322220"},{"name":"beIN SPORTS AFC 2 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/322223"},{"name":"beIN SPORTS AFC 3 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/322221"},{"name":"beIN SPORTS AFC 3 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/322224"},{"name":"beIN SPORTS AFC 4 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/322383"},{"name":"beIN SPORTS AFC 4 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/322382"},{"name":"beIN SPORTS ENGLISH 1 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/334531"},{"name":"beIN SPORTS ENGLISH 2 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/334532"},{"name":"beIN SPORTS ENGLISH 1 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/334529"},{"name":"beIN SPORTS ENGLISH 2 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/334530"},{"name":"beIN SPORTS ENGLISH 1 4K","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/334527"},{"name":"beIN SPORTS ENGLISH 2 4K","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/334528"},{"name":"beIN SPORTS French 1 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/382888"},{"name":"beIN SPORTS French 2 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/382887"},{"name":"beIN SPORTS French 1 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/382886"},{"name":"beIN SPORTS French 2 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/382885"},{"name":"beIN SPORTS French 1 4K","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/382884"},{"name":"beIN SPORTS French 2 4K","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/382883"},{"name":"FEED MARVEL 1 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/386807"},{"name":"FEED MARVEL 1 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/363991"},{"name":"FEED MARVEL 2 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/362519"},{"name":"FEED MARVEL 3 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/386805"},{"name":"FEED MARVEL 3 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/386806"},{"name":"FEED MARVEL 4 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/359294"},{"name":"FEED MARVEL 4 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/359293"},{"name":"beIN SPORTS 1 MINI","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/523396"},{"name":"beIN SPORTS 2 MINI","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/178701"},{"name":"beIN SPORTS 3 MINI","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/178700"},{"name":"beIN SPORTS 4 MINI","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/178699"},{"name":"beIN SPORTS 5 MINI","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/178698"},{"name":"beIN SPORTS 6 MINI","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/178697"},{"name":"beIN SPORTS 7 MINI","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/178696"},{"name":"beIN SPORTS 8 MINI","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/178695"},{"name":"beIN SPORTS 9 MINI","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/523419"},{"name":"beIN SPORTS 1 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/178670"},{"name":"beIN SPORTS 2 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/178669"},{"name":"beIN SPORTS 3 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/499321"},{"name":"beIN SPORTS 4 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/178667"},{"name":"beIN SPORTS 5 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/178666"},{"name":"beIN SPORTS 6 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/178665"},{"name":"beIN SPORTS 7 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/178664"},{"name":"beIN SPORTS 8 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/178663"},{"name":"beIN SPORTS 9 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/178662"},{"name":"ALWAN SPORTS 1 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/485632"},{"name":"ALWAN SPORTS 2 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/485633"},{"name":"ALWAN SPORTS 3 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/485634"},{"name":"ALWAN SPORTS 4 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/485635"},{"name":"ALWAN SPORTS 5 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/485636"},{"name":"ALWAN SPORTS 6 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/485637"},{"name":"Arabs Got Talent","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/379523"},{"name":"RedBull Tv","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/379521"},{"name":"DRAMA TURKY","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/358676"},{"name":"Movies Action","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/352140"},{"name":"MBC MASR DRAMA","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/401613"},{"name":"MBC MASR DRAMA HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/401448"},{"name":"MBC PERSIA HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/401442"},{"name":"MBC 1 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/269332"},{"name":"MBC 2 4K","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/269331"},{"name":"MBC 4 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/269329"},{"name":"MBC 5 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/269328"},{"name":"MBC BOLLYWOOD SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/269325"},{"name":"AR: MBC IRAQ SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/269323"},{"name":"Rotana Drama","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/267893"},{"name":"MBC 1 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/99366"},{"name":"MBC 2 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/99367"},{"name":"MBC 3 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/99368"},{"name":"MBC 4 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/99369"},{"name":"MBC 5 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/99370"},{"name":"MBC MASR 1 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/456981"},{"name":"MBC MASR 1 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/99359"},{"name":"MBC MASR 2 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/456980"},{"name":"MBC MASR 2 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/99361"},{"name":"MBC DRAMA HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/99362"},{"name":"MBC DRAMA+ HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/99347"},{"name":"MBC VARIETY FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/99364"},{"name":"MBC IRAQ HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/99365"},{"name":"MBC MAX FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/99371"},{"name":"MBC ACTION FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/99372"},{"name":"MBC BOLLYWOOD HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/99373"},{"name":"ZEE ALWAN HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/261263"},{"name":"ZEE ALWAN SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/261539"},{"name":"Rotana Cinema EGY 4K","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/102723"},{"name":"ROTANA CINEMA KSA HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/102722"},{"name":"ROTANA DRAMA HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/102726"},{"name":"ROTANA +","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/102727"},{"name":"ROTANA COMEDY HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/102725"},{"name":"ROTANA CLASSIC HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/102724"},{"name":"ROTANA KIDS","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/102729"},{"name":"Rotana Khalijia FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/102728"},{"name":"OSN YA HALA","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/273005"},{"name":"OSN YA HALA ARABI","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/273004"},{"name":"OSN YA HALA AFLAM","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/273003"},{"name":"OSN Alfa Musalsalat HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/273002"},{"name":"OSN Alfa Musalsalat 2 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/273001"},{"name":"OSN Alfa Cinema 1 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/273000"},{"name":"OSN Alfa Cinema 2 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272999"},{"name":"OSN Alfa AlFann HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/366090"},{"name":"OSN Alfa Al Safwa HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/366089"},{"name":"OSN STAR MOVIES","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272998"},{"name":"OSN Alfa Alyoum HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272996"},{"name":"OSN Alfa Music Now HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272994"},{"name":"OSN FANN","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272993"},{"name":"OSN MOVIES PREMIERE HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272990"},{"name":"OSN MOVIES HOLYWOOD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272989"},{"name":"OSN Family HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/366103"},{"name":"OSN Showcase Classic HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/366102"},{"name":"OSN Crime HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/366101"},{"name":"OSN Crime Investigation HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/366100"},{"name":"OSN TV One HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/366099"},{"name":"OSN WWE","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/366098"},{"name":"OSN Now HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/366097"},{"name":"OSN News HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/366096"},{"name":"OSN Fatafeat HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/366095"},{"name":"OSN Animal HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/366094"},{"name":"OSN Moonbug Kids","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/366093"},{"name":"OSN Nick Toon HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/366092"},{"name":"OSN Cartoon Network HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/366091"},{"name":"OSN ACTION","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272988"},{"name":"OSN SHOWCASE","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272987"},{"name":"OSN COMEDY","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272986"},{"name":"OSN WOMAN","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272985"},{"name":"OSN LIVING","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272984"},{"name":"OSN TLC","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272983"},{"name":"OSN E!","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272982"},{"name":"OSN FASHION TV","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272980"},{"name":"OSN DISNEY CHANNEL","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272979"},{"name":"OSN DISNEY JUNIOR","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272977"},{"name":"OSN KIDS","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272976"},{"name":"OSN KIDS ZONE TV","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272975"},{"name":"OSN NICK JR","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272974"},{"name":"OSN NICKELODEON","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272973"},{"name":"National Geographic Abu Dhabi","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/318063"},{"name":"OSN NAT GEO WILD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272971"},{"name":"OSN NAT GEO","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272970"},{"name":"OSN NAT GEO PEOPLE","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272969"},{"name":"OSN DISCOVERY","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272968"},{"name":"OSN DISCOVERY SCIENCE","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272967"},{"name":"OSN DISCOVERY ID","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272966"},{"name":"OSN HISTORY","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272965"},{"name":"OSN H2 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272964"},{"name":"OSN Meezze HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272963"},{"name":"OSN- POP UP FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203193"},{"name":"OSN- MOVIES FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203192"},{"name":"OSN- Movies First FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203191"},{"name":"OSN- Action HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203190"},{"name":"OSN- Movies First +2 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203189"},{"name":"OSN- On Demand FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203188"},{"name":"OSN Family","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203187"},{"name":"OSN- KIDS FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203186"},{"name":"OSN BOX OFFICE 1","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/229403"},{"name":"OSN- PLAY MOVIES 1 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203185"},{"name":"OSN- PLAY MOVIES 2 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203184"},{"name":"OSN- PLAY MOVIES 3 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203183"},{"name":"OSN- PLAY MOVIES 4 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203182"},{"name":"OSN- PLAY CINEMA 1 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203181"},{"name":"OSN- PLAY CINEMA 2 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203180"},{"name":"OSN- PLAY CINEMA 3 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203179"},{"name":"OSN- PLAY CINEMA 4 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203178"},{"name":"OSN- Enigma FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203177"},{"name":"OSN- Movies Comedy FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203176"},{"name":"OSN Art Cinema","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/82701"},{"name":"OSN Art Aflam 1","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/82702"},{"name":"OSN Art Aflam 2","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/82703"},{"name":"OSN Art Hekayat 1","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/82704"},{"name":"OSN Art Hekayat 2","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/82705"},{"name":"beIN MOVIES PREMIERE 1 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/101132"},{"name":"beIN MOVIES ACTION 2 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/101134"},{"name":"beIN MOVIES 3 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/101136"},{"name":"beIN MOVIES 4 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/101138"},{"name":"beIN CINEMA HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86610"},{"name":"beIN BOX OFFICE 1 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86614"},{"name":"beIN BOX OFFICE 2 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/334533"},{"name":"beIN SERIES 1 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/101142"},{"name":"beIN SERIES 2 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/101144"},{"name":"beIN DRAMA 1 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/101140"},{"name":"beIN FOX MOVIES HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86609"},{"name":"beIN FOX ACTION MOVIES HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86612"},{"name":"beIN FOX LIFE HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86615"},{"name":"beIN STAR MOVIES HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86617"},{"name":"DTX","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/124144"},{"name":"BEIN ANIMAL PLANET","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86618"},{"name":"BEIN FOOD NETWORK HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86619"},{"name":"Bein Nat Geo HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86622"},{"name":"NATGEO WILD HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86623"},{"name":"BEIN  GOURMET","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86625"},{"name":"Bein BBC Earth HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86626"},{"name":"BEIN OUTDOOR","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86628"},{"name":"BEIN DREAM WOKRS","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86629"},{"name":"BEIN FATAFEAT","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86632"},{"name":"beIN HGTV","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86759"},{"name":"Bein Boomerang HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86760"},{"name":"Bein Baraem HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86762"},{"name":"VIP AR: beIN DRAMA 4K","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/204737"},{"name":"Nat Geo People HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/92376"},{"name":"Majestic WWE","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/102204"},{"name":"Majestic TOM AND JERRY","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/102206"},{"name":"Shasha TV SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490718"},{"name":"Shasha TV 2 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490719"},{"name":"Shasha TV HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490720"},{"name":"Shasha TV 2 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490721"},{"name":"Shasha TV 4k","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490723"},{"name":"Shasha TV 2 4K","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490722"},{"name":"THMANYAH 1 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/474870"},{"name":"THMANYAH 1 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/474871"},{"name":"THMANYAH 1 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/474872"},{"name":"THMANYAH 2 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/474866"},{"name":"THMANYAH 2 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/474867"},{"name":"THMANYAH 2 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/474868"},{"name":"THMANYAH 3 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/474862"},{"name":"THMANYAH 3 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/474863"},{"name":"THMANYAH 3 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/474864"},{"name":"Shahid Sport 1 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490733"},{"name":"Shahid Sport 2 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490730"},{"name":"Shahid Sport 3 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490727"},{"name":"Shahid Sport 4 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490724"},{"name":"Shahid Sport 1 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490734"},{"name":"Shahid Sport 2 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490731"},{"name":"Shahid Sport 3 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490728"},{"name":"Shahid Sport 4 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490725"},{"name":"Shahid Sport 1 4k","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490735"},{"name":"Shahid Sport 2 4K","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490732"},{"name":"Shahid Sport 3 4k","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490729"},{"name":"Shahid Sport 4 4k","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490726"},{"name":"STARZPLAY CricLife 1","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/476909"},{"name":"STARZPLAY CricLife 2","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/476908"},{"name":"STARZPLAY CricLife 3","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/476907"},{"name":"STARZPLAY Criclife max","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/476906"},{"name":"STARZPLAY GOLF","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/476905"},{"name":"STARZPLAY Sports 1 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/476913"},{"name":"STARZPLAY Sports 2 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/476912"},{"name":"STARZPLAY Sports 2 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/476911"},{"name":"STARZPLAY Sports 2 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/476910"},{"name":"STARZPLAY Sports 3 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/476918"},{"name":"STARZPLAY Sports 3 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/476917"},{"name":"STARZPLAY Sports 3 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/476916"},{"name":"AL-FAJER TV 1 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/262165"},{"name":"AL-FAJER TV 1 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/262166"},{"name":"AL-FAJER TV 2 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/262162"},{"name":"AL-FAJER TV 2 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/262163"},{"name":"AL-FAJER TV 3 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/262159"},{"name":"AL-FAJER TV 3 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/262160"},{"name":"AL-FAJER TV 4 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/262156"},{"name":"AL-FAJER TV 4 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/262157"},{"name":"AL-FAJER TV 5 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/262153"},{"name":"AL-FAJER TV 5 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/262154"},{"name":"WWE FEED MARVEL  SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/87164"},{"name":"WWE FEED MARVEL  HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/102808"},{"name":"|US| WWE","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/87170"},{"name":"we can  wwe","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/395572"},{"name":"IMDB  WWE 1","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/395571"},{"name":"IMDB   WWE","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/395570"},{"name":"Majestic  WWE","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/395569"},{"name":"WATCH  WWE","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/395568"},{"name":"Usa | Sport: UFC 1 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/266083"}]/*[/INJECT_CHANNELS]*/;
+            if (injectedChannels && injectedChannels.length > 0) {
+                channels = injectedChannels;
+                saveChannelsToStorage();
+            }
+        }
 
         // دالة فك شفرة ملفات الـ M3U
         function parseM3UString(content) {
@@ -956,16 +210,13 @@ http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/262154
             return parsedChannels;
         }
 
-        // تحميل القنوات الأساسية
-        channels = parseM3UString(rawM3UData);
-
         // دالة رسم القنوات في القائمة
         function renderPlaylist() {
             playlistContainer.innerHTML = '';
             channelCountText.innerText = channels.length + " قناة";
             
             if (channels.length === 0) {
-                playlistContainer.innerHTML = '<li style="padding: 20px; text-align: center; color: #777;">القائمة فاضية! ضيف قنوات من فوق.</li>';
+                playlistContainer.innerHTML = '<li style="padding: 20px; text-align: center; color: #777;">القائمة فاضية! ضيف قنوات أو استورد ملف M3U.</li>';
                 return;
             }
 
@@ -980,18 +231,25 @@ http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/262154
                         <span class="channel-name">${channel.name}</span>
                     </div>
                     <div class="channel-actions">
-                        <button class="btn-delete" title="مسح من القايمة" onclick="deleteChannel(${index})">🗑️</button>
+                        <button class="btn-delete" title="مسح من القايمة" onclick="deleteChannel(${index}, event)">🗑️</button>
                     </div>
                 `;
                 playlistContainer.appendChild(li);
             });
         }
 
-        // دالة التشغيل الذكية
+        // دالة التشغيل
         function playChannel(url, name, element) {
+            activeStreamUrl = url;
+            activeStreamName = name;
+            activeElementRef = element;
+
             currentChannelText.innerText = "● جاري تشغيل: " + name;
+            
             document.querySelectorAll('.channel-item').forEach(item => item.classList.remove('active'));
-            element.parentElement.classList.add('active');
+            if (element) {
+                element.parentElement.classList.add('active');
+            }
 
             let streamUrl = url;
             if (streamUrl.includes('.ts')) {
@@ -1003,21 +261,62 @@ http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/262154
             if (hls) { hls.destroy(); }
 
             if (Hls.isSupported()) {
-                hls = new Hls();
+                hls = new Hls({
+                    enableWorker: true,
+                    lowLatencyMode: true,
+                    manifestLoadingTimeOut: 10000,
+                    manifestLoadingMaxRetry: 3,
+                });
+                
                 hls.loadSource(streamUrl);
                 hls.attachMedia(videoElement);
+                
                 hls.on(Hls.Events.MANIFEST_PARSED, function() {
-                    videoElement.play();
+                    videoElement.play().catch(e => console.log("تحذير التشغيل:", e));
+                });
+
+                hls.on(Hls.Events.ERROR, function (event, data) {
+                    if (data.fatal) {
+                        switch (data.type) {
+                            case Hls.ErrorTypes.NETWORK_ERROR:
+                                hls.startLoad();
+                                break;
+                            case Hls.ErrorTypes.MEDIA_ERROR:
+                                hls.recoverMediaError();
+                                break;
+                            default:
+                                hls.destroy();
+                                currentChannelText.innerText = "❌ البث لا يعمل (تأكد من الرابط أو سياسة السيرفر)";
+                                break;
+                        }
+                    }
                 });
             } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
                 videoElement.src = streamUrl;
-                videoElement.play();
+                videoElement.play().catch(e => console.log("تحذير التشغيل:", e));
             }
         }
 
-        // =====================================
-        // 🔥 دالة الإضافة اليدوية لقناة واحدة
-        // =====================================
+        function refreshPlayer() {
+            if (activeStreamUrl && activeStreamName) {
+                playChannel(activeStreamUrl, activeStreamName, activeElementRef);
+            } else {
+                alert("مفيش قناة شغالة عشان تعملها ريفريش!");
+            }
+        }
+
+        function closePlayer() {
+            if (hls) { hls.destroy(); }
+            videoElement.pause();
+            videoElement.removeAttribute('src');
+            videoElement.load();
+            currentChannelText.innerText = "اختر قناة للتشغيل...";
+            document.querySelectorAll('.channel-item').forEach(item => item.classList.remove('active'));
+            activeStreamUrl = '';
+            activeStreamName = '';
+            activeElementRef = null;
+        }
+
         function addSingleChannel() {
             const name = inputName.value.trim();
             const url = inputUrl.value.trim();
@@ -1028,17 +327,15 @@ http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/262154
                 return;
             }
 
-            // unshift بتضيف القناة في أول القايمة مش في الآخر عشان تشوفها على طول
             channels.unshift({ name, url, logo }); 
+            saveChannelsToStorage();
             renderPlaylist();
 
-            // تصفير الخانات بعد الإضافة
             inputName.value = '';
             inputUrl.value = '';
             inputLogo.value = '';
         }
 
-        // رفع ملف M3U
         function handleFileUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -1046,24 +343,89 @@ http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/262154
             reader.onload = function(e) {
                 const content = e.target.result;
                 const newChannels = parseM3UString(content);
-                // هنضيف القنوات الجديدة في أول القايمة بردو
                 channels = newChannels.concat(channels);
+                saveChannelsToStorage();
                 renderPlaylist();
-                alert(`تم إضافة ${newChannels.length} قناة مؤقتاً بنجاح! 🎉`);
+                alert(`تم إضافة وحفظ ${newChannels.length} قناة بنجاح! 🎉`);
                 event.target.value = ''; 
             };
             reader.readAsText(file);
         }
 
-        // مسح قناة
-        function deleteChannel(index) {
+        function deleteChannel(index, event) {
+            event.stopPropagation(); 
             channels.splice(index, 1);
+            saveChannelsToStorage();
             renderPlaylist();
+        }
+
+        function deleteAllChannels() {
+            if (channels.length === 0) {
+                alert("القائمة فاضية بالفعل!");
+                return;
+            }
+            if (confirm("متأكد إنك عايز تمسح كل القنوات المحفوظة؟")) {
+                channels = [];
+                saveChannelsToStorage();
+                renderPlaylist();
+                closePlayer(); 
+            }
+        }
+
+        // =====================================
+        // 🔥 دالة تصدير المشغل كملف HTML مستقل
+        // =====================================
+        function exportToHTML() {
+            if (channels.length === 0) {
+                alert("مفيش قنوات عشان تحفظها!");
+                return;
+            }
+
+            // بناخد نسخة من كود الصفحة بالكامل
+            const clonedDoc = document.documentElement.cloneNode(true);
+
+            // بننضف النسخة دي عشان تفتح عند صاحبك كأنها جديدة
+            clonedDoc.querySelector('#playlist').innerHTML = '';
+            clonedDoc.querySelector('#current-channel-name').innerText = 'اختر قناة للتشغيل...';
+            clonedDoc.querySelector('#channel-count').innerText = '0 قناة';
+            
+            const video = clonedDoc.querySelector('#video');
+            video.removeAttribute('src');
+            
+            // بنفضي الخانات بتاعة الإضافة
+            ['#input-name', '#input-url', '#input-logo'].forEach(id => {
+                const el = clonedDoc.querySelector(id);
+                if(el) el.removeAttribute('value');
+            });
+
+            let htmlStr = clonedDoc.outerHTML;
+
+            // بنحول مصفوفة القنوات لنص، وبنحقنها جوه الكود مكان العلامة السحرية
+            const channelsJson = JSON.stringify(channels);
+            htmlStr = htmlStr.replace(/\/\*\[INJECT_CHANNELS\]\*\/[\s\S]*?\/\*\[\/INJECT_CHANNELS\]\*\//, `/*[INJECT_CHANNELS]*/${channelsJson}/*[/INJECT_CHANNELS]*/`);
+
+            const fullHtml = `<!DOCTYPE html>\n<html lang="ar" dir="rtl">\n${htmlStr}\n</html>`;
+
+            // بنعمل الملف وبنزله
+            const blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'X-Stream_Player_With_Channels.html';
+            document.body.appendChild(a);
+            a.click();
+            
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
         }
 
         // تشغيل الرسم أول ما الصفحة تفتح
         renderPlaylist();
 
     </script>
-</body>
+
+
+
+</body></html>
 </html>
