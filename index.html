@@ -3,253 +3,298 @@
 <html lang="ar" dir="rtl"><head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>X-Stream Pro - Ultimate</title>
+    <title>Nova Stream - Advanced Player</title>
     
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css">
+    <script src="https://cdn.plyr.io/3.7.8/plyr.js"></script>
     
     <style>
-        body {
-            background-color: #0f0f0f; color: white;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0; padding: 20px; display: flex; justify-content: center;
-            align-items: flex-start; min-height: 100vh; box-sizing: border-box;
+        :root {
+            --bg-main: #0b0f19;
+            --bg-panel: #151b2b;
+            --bg-hover: #1e263c;
+            --accent: #00d2ff;
+            --accent-hover: #00a3cc;
+            --text-main: #f0f4f8;
+            --text-muted: #8b9eb0;
+            --danger: #ff4757;
+            --success: #2ed573;
+            --warning: #ffa502;
         }
-        .app-container {
-            display: flex; flex-direction: column; width: 100%; max-width: 1200px; gap: 20px;
-        }
-        .main-content {
-            display: flex; background: #1a1a1a; border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.9); overflow: hidden; border: 1px solid #333;
-        }
-        
-        /* المشغل */
-        .player-section { flex: 2; padding: 20px; display: flex; flex-direction: column; }
-        .player-header {
-            display: flex; justify-content: space-between; align-items: center;
-            margin-bottom: 15px; border-bottom: 1px solid #333; padding-bottom: 10px;
-        }
-        .player-header h1 { margin: 0; font-size: 24px; color: #e50914; }
-        .now-playing { color: #4caf50; font-size: 16px; font-weight: bold; }
-        
-        /* أزرار التحكم العلوية للمشغل */
-        .top-controls {
-            display: flex; justify-content: flex-end; gap: 10px; margin-bottom: 10px;
-        }
-        .btn-action {
-            background: #2a2a2a; border: 1px solid #444; color: white; 
-            padding: 6px 15px; border-radius: 6px; cursor: pointer; font-size: 13px; transition: 0.3s;
-        }
-        .btn-action:hover { background: #444; }
-        .btn-close:hover { background: #f44336; border-color: #f44336; }
-        .btn-refresh:hover { background: #2196F3; border-color: #2196F3; }
 
-        video {
-            width: 100%; border-radius: 8px; background: #000;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5); aspect-ratio: 16/9; outline: none;
+        * { box-sizing: border-box; }
+
+        body {
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
         }
-        
-        /* القائمة */
-        .playlist-section {
-            flex: 1; background: #222; border-right: 1px solid #333;
-            display: flex; flex-direction: column; max-height: 600px;
+
+        .app-wrapper {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            max-width: 1300px;
+            gap: 20px;
         }
-        .playlist-header {
-            padding: 15px; background: #2a2a2a; margin: 0;
-            font-size: 16px; border-bottom: 1px solid #333; text-align: center;
-            display: flex; justify-content: space-between; align-items: center;
+
+        /* لوحة التحكم */
+        .controls-panel {
+            background: var(--bg-panel);
+            padding: 20px;
+            border-radius: 16px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: center;
+            justify-content: space-between;
+            border: 1px solid rgba(255, 255, 255, 0.05);
         }
-        .channel-count { font-size: 12px; background: #e50914; padding: 3px 8px; border-radius: 10px;}
-        .channel-list { list-style: none; padding: 0; margin: 0; overflow-y: auto; }
+
+        .input-group { display: flex; flex-wrap: wrap; gap: 10px; flex: 1; }
+
+        .controls-panel input {
+            flex: 1; min-width: 140px; padding: 12px; border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1); background: rgba(0, 0, 0, 0.2);
+            color: white; outline: none; transition: 0.3s;
+        }
+
+        .controls-panel input:focus { border-color: var(--accent); box-shadow: 0 0 8px rgba(0, 210, 255, 0.3); }
+
+        .action-btns { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; }
+
+        .btn {
+            padding: 12px 18px; border: none; border-radius: 8px; color: white;
+            font-weight: bold; cursor: pointer; transition: all 0.3s ease;
+            font-size: 14px; display: flex; align-items: center; gap: 6px;
+        }
+
+        .btn:active { transform: scale(0.96); }
+        .btn-add { background: var(--accent); color: #000; }
+        .btn-add:hover { background: var(--accent-hover); }
+        .btn-upload { background: var(--success); color: #000;}
+        .btn-upload:hover { background: #26b361; }
+        .btn-export { background: var(--warning); color: #000;}
+        .btn-export:hover { background: #e09200; }
+        .btn-clear { background: var(--danger); }
+        .btn-clear:hover { background: #e03e4d; }
+
+        /* منطقة المشغل والقائمة */
+        .content-area { display: flex; gap: 20px; height: calc(100vh - 160px); min-height: 500px; }
+
+        /* القائمة الجانبية */
+        .sidebar {
+            flex: 1; background: var(--bg-panel); border-radius: 16px;
+            display: flex; flex-direction: column; overflow: hidden;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4); border: 1px solid rgba(255, 255, 255, 0.05); max-width: 350px;
+        }
+
+        .sidebar-header {
+            padding: 18px; background: rgba(0, 0, 0, 0.2); font-size: 18px;
+            font-weight: bold; display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .badge {
+            font-size: 12px; background: var(--accent); color: #000;
+            padding: 4px 10px; border-radius: 12px; font-weight: bold;
+        }
+
+        .channel-list { list-style: none; padding: 0; margin: 0; overflow-y: auto; flex: 1; }
+        .channel-list::-webkit-scrollbar { width: 6px; }
+        .channel-list::-webkit-scrollbar-thumb { background: var(--text-muted); border-radius: 4px; }
+
         .channel-item {
             display: flex; align-items: center; justify-content: space-between;
-            padding: 10px 15px; border-bottom: 1px solid #333; transition: background 0.3s;
+            padding: 12px 15px; border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            transition: background 0.2s; cursor: pointer;
         }
-        .channel-item:hover { background: #333; }
-        .channel-item.active { background: rgba(229, 9, 20, 0.2); border-right: 4px solid #e50914; }
-        
-        .channel-info { display: flex; align-items: center; cursor: pointer; flex: 1; overflow: hidden;}
-        .channel-logo { width: 40px; height: 40px; border-radius: 5px; margin-left: 10px; object-fit: contain; background: #111; }
-        .channel-name { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
-        
-        .channel-actions button {
-            background: none; border: none; cursor: pointer; color: #ccc;
-            font-size: 14px; margin-right: 5px; padding: 5px; border-radius: 4px;
-        }
-        .btn-delete:hover { color: #f44336; background: rgba(244, 67, 54, 0.1); }
 
-        /* لوحة التحكم والإضافة */
-        .admin-panel {
-            background: #1a1a1a; padding: 20px; border-radius: 12px;
-            border: 1px solid #333; display: flex; flex-wrap: wrap; gap: 15px; align-items: center; justify-content: space-between;
-        }
-        .form-group { display: flex; flex-wrap: wrap; gap: 10px; flex: 1; }
-        .admin-panel input[type="text"] {
-            flex: 1; min-width: 150px; padding: 10px; border-radius: 6px;
-            border: 1px solid #444; background: #111; color: white; outline: none;
-        }
-        .admin-panel input[type="text"]:focus { border-color: #e50914; }
-        
-        .btn { padding: 10px 15px; border: none; border-radius: 6px; color: white; font-weight: bold; cursor: pointer; transition: 0.3s; font-size: 14px; }
-        .btn-add { background: #e50914; }
-        .btn-add:hover { background: #b20710; }
-        .btn-upload { background: #4caf50; display: flex; align-items: center; gap: 5px; white-space: nowrap;}
-        .btn-upload:hover { background: #388e3c; }
-        .btn-export { background: #ff9800; display: flex; align-items: center; gap: 5px; white-space: nowrap; color: #fff;}
-        .btn-export:hover { background: #f57c00; }
-        .btn-delete-all { background: #f44336; display: flex; align-items: center; gap: 5px; white-space: nowrap; }
-        .btn-delete-all:hover { background: #d32f2f; }
-        .upload-wrapper { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; }
+        .channel-item:hover { background: var(--bg-hover); }
+        .channel-item.playing { background: rgba(0, 210, 255, 0.1); border-right: 4px solid var(--accent); }
 
-        @media (max-width: 900px) {
-            .main-content { flex-direction: column; }
-            .playlist-section { border-right: none; border-top: 1px solid #333; max-height: 400px;}
-            .admin-panel { flex-direction: column; align-items: stretch; }
-            .form-group { flex-direction: column; }
-            .upload-wrapper { width: 100%; justify-content: space-between; }
+        .channel-info { display: flex; align-items: center; flex: 1; overflow: hidden; }
+        .channel-thumb { width: 45px; height: 45px; border-radius: 8px; margin-left: 12px; object-fit: cover; background: #000; }
+        .channel-name { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-main); }
+
+        .btn-delete { background: none; border: none; color: var(--text-muted); font-size: 18px; cursor: pointer; transition: 0.3s; padding: 5px; }
+        .btn-delete:hover { color: var(--danger); transform: scale(1.1); }
+
+        /* منطقة الفيديو */
+        .video-container {
+            flex: 2.5; background: var(--bg-panel); border-radius: 16px; padding: 20px;
+            display: flex; flex-direction: column; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .video-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .now-playing-title { font-size: 20px; color: var(--accent); display: flex; align-items: center; gap: 8px; }
+        .player-actions { display: flex; gap: 10px; }
+
+        .btn-icon {
+            background: rgba(255, 255, 255, 0.1); border: none; color: white;
+            padding: 8px 12px; border-radius: 6px; cursor: pointer; transition: 0.3s;
+        }
+        .btn-icon:hover { background: rgba(255, 255, 255, 0.2); }
+
+        .player-wrapper {
+            flex: 1; border-radius: 12px; overflow: hidden; background: #000;
+            display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+
+        .plyr { width: 100%; height: 100%; --plyr-color-main: var(--accent); }
+
+        @media (max-width: 992px) {
+            .content-area { flex-direction: column-reverse; height: auto; }
+            .sidebar { max-width: 100%; height: 400px; }
+            .controls-panel { flex-direction: column; align-items: stretch; }
+            .action-btns { justify-content: space-between; }
         }
     </style>
 </head>
-<body>
+<body><div hidden="" id="sprite-plyr"><!--?xml version="1.0" encoding="UTF-8"?--><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"><symbol id="plyr-airplay" viewBox="0 0 18 18"><path d="M16 1H2a1 1 0 00-1 1v10a1 1 0 001 1h3v-2H3V3h12v8h-2v2h3a1 1 0 001-1V2a1 1 0 00-1-1z"></path><path d="M4 17h10l-5-6z"></path></symbol><symbol id="plyr-captions-off" viewBox="0 0 18 18"><path d="M1 1c-.6 0-1 .4-1 1v11c0 .6.4 1 1 1h4.6l2.7 2.7c.2.2.4.3.7.3.3 0 .5-.1.7-.3l2.7-2.7H17c.6 0 1-.4 1-1V2c0-.6-.4-1-1-1H1zm4.52 10.15c1.99 0 3.01-1.32 3.28-2.41l-1.29-.39c-.19.66-.78 1.45-1.99 1.45-1.14 0-2.2-.83-2.2-2.34 0-1.61 1.12-2.37 2.18-2.37 1.23 0 1.78.75 1.95 1.43l1.3-.41C8.47 4.96 7.46 3.76 5.5 3.76c-1.9 0-3.61 1.44-3.61 3.7 0 2.26 1.65 3.69 3.63 3.69zm7.57 0c1.99 0 3.01-1.32 3.28-2.41l-1.29-.39c-.19.66-.78 1.45-1.99 1.45-1.14 0-2.2-.83-2.2-2.34 0-1.61 1.12-2.37 2.18-2.37 1.23 0 1.78.75 1.95 1.43l1.3-.41c-.28-1.15-1.29-2.35-3.25-2.35-1.9 0-3.61 1.44-3.61 3.7 0 2.26 1.65 3.69 3.63 3.69z" fill-rule="evenodd" fill-opacity=".5"></path></symbol><symbol id="plyr-captions-on" viewBox="0 0 18 18"><path d="M1 1c-.6 0-1 .4-1 1v11c0 .6.4 1 1 1h4.6l2.7 2.7c.2.2.4.3.7.3.3 0 .5-.1.7-.3l2.7-2.7H17c.6 0 1-.4 1-1V2c0-.6-.4-1-1-1H1zm4.52 10.15c1.99 0 3.01-1.32 3.28-2.41l-1.29-.39c-.19.66-.78 1.45-1.99 1.45-1.14 0-2.2-.83-2.2-2.34 0-1.61 1.12-2.37 2.18-2.37 1.23 0 1.78.75 1.95 1.43l1.3-.41C8.47 4.96 7.46 3.76 5.5 3.76c-1.9 0-3.61 1.44-3.61 3.7 0 2.26 1.65 3.69 3.63 3.69zm7.57 0c1.99 0 3.01-1.32 3.28-2.41l-1.29-.39c-.19.66-.78 1.45-1.99 1.45-1.14 0-2.2-.83-2.2-2.34 0-1.61 1.12-2.37 2.18-2.37 1.23 0 1.78.75 1.95 1.43l1.3-.41c-.28-1.15-1.29-2.35-3.25-2.35-1.9 0-3.61 1.44-3.61 3.7 0 2.26 1.65 3.69 3.63 3.69z" fill-rule="evenodd"></path></symbol><symbol id="plyr-download" viewBox="0 0 18 18"><path d="M9 13c.3 0 .5-.1.7-.3L15.4 7 14 5.6l-4 4V1H8v8.6l-4-4L2.6 7l5.7 5.7c.2.2.4.3.7.3zm-7 2h14v2H2z"></path></symbol><symbol id="plyr-enter-fullscreen" viewBox="0 0 18 18"><path d="M10 3h3.6l-4 4L11 8.4l4-4V8h2V1h-7zM7 9.6l-4 4V10H1v7h7v-2H4.4l4-4z"></path></symbol><symbol id="plyr-exit-fullscreen" viewBox="0 0 18 18"><path d="M1 12h3.6l-4 4L2 17.4l4-4V17h2v-7H1zM16 .6l-4 4V1h-2v7h7V6h-3.6l4-4z"></path></symbol><symbol id="plyr-fast-forward" viewBox="0 0 18 18"><path d="M7.875 7.171L0 1v16l7.875-6.171V17L18 9 7.875 1z"></path></symbol><symbol id="plyr-logo-vimeo" viewBox="0 0 18 18"><path d="M17 5.3c-.1 1.6-1.2 3.7-3.3 6.4-2.2 2.8-4 4.2-5.5 4.2-.9 0-1.7-.9-2.4-2.6C5 10.9 4.4 6 3 6c-.1 0-.5.3-1.2.8l-.8-1c.8-.7 3.5-3.4 4.7-3.5 1.2-.1 2 .7 2.3 2.5.3 2 .8 6.1 1.8 6.1.9 0 2.5-3.4 2.6-4 .1-.9-.3-1.9-2.3-1.1.8-2.6 2.3-3.8 4.5-3.8 1.7.1 2.5 1.2 2.4 3.3z"></path></symbol><symbol id="plyr-logo-youtube" viewBox="0 0 18 18"><path d="M16.8 5.8c-.2-1.3-.8-2.2-2.2-2.4C12.4 3 9 3 9 3s-3.4 0-5.6.4C2 3.6 1.3 4.5 1.2 5.8 1 7.1 1 9 1 9s0 1.9.2 3.2c.2 1.3.8 2.2 2.2 2.4C5.6 15 9 15 9 15s3.4 0 5.6-.4c1.4-.3 2-1.1 2.2-2.4.2-1.3.2-3.2.2-3.2s0-1.9-.2-3.2zM7 12V6l5 3-5 3z"></path></symbol><symbol id="plyr-muted" viewBox="0 0 18 18"><path d="M12.4 12.5l2.1-2.1 2.1 2.1 1.4-1.4L15.9 9 18 6.9l-1.4-1.4-2.1 2.1-2.1-2.1L11 6.9 13.1 9 11 11.1zM3.786 6.008H.714C.286 6.008 0 6.31 0 6.76v4.512c0 .452.286.752.714.752h3.072l4.071 3.858c.5.3 1.143 0 1.143-.602V2.752c0-.601-.643-.977-1.143-.601L3.786 6.008z"></path></symbol><symbol id="plyr-pause" viewBox="0 0 18 18"><path d="M6 1H3c-.6 0-1 .4-1 1v14c0 .6.4 1 1 1h3c.6 0 1-.4 1-1V2c0-.6-.4-1-1-1zm6 0c-.6 0-1 .4-1 1v14c0 .6.4 1 1 1h3c.6 0 1-.4 1-1V2c0-.6-.4-1-1-1h-3z"></path></symbol><symbol id="plyr-pip" viewBox="0 0 18 18"><path d="M13.293 3.293L7.022 9.564l1.414 1.414 6.271-6.271L17 7V1h-6z"></path><path d="M13 15H3V5h5V3H2a1 1 0 00-1 1v12a1 1 0 001 1h12a1 1 0 001-1v-6h-2v5z"></path></symbol><symbol id="plyr-play" viewBox="0 0 18 18"><path d="M15.562 8.1L3.87.225c-.818-.562-1.87 0-1.87.9v15.75c0 .9 1.052 1.462 1.87.9L15.563 9.9c.584-.45.584-1.35 0-1.8z"></path></symbol><symbol id="plyr-restart" viewBox="0 0 18 18"><path d="M9.7 1.2l.7 6.4 2.1-2.1c1.9 1.9 1.9 5.1 0 7-.9 1-2.2 1.5-3.5 1.5-1.3 0-2.6-.5-3.5-1.5-1.9-1.9-1.9-5.1 0-7 .6-.6 1.4-1.1 2.3-1.3l-.6-1.9C6 2.6 4.9 3.2 4 4.1 1.3 6.8 1.3 11.2 4 14c1.3 1.3 3.1 2 4.9 2 1.9 0 3.6-.7 4.9-2 2.7-2.7 2.7-7.1 0-9.9L16 1.9l-6.3-.7z"></path></symbol><symbol id="plyr-rewind" viewBox="0 0 18 18"><path d="M10.125 1L0 9l10.125 8v-6.171L18 17V1l-7.875 6.171z"></path></symbol><symbol id="plyr-settings" viewBox="0 0 18 18"><path d="M16.135 7.784a2 2 0 01-1.23-2.969c.322-.536.225-.998-.094-1.316l-.31-.31c-.318-.318-.78-.415-1.316-.094a2 2 0 01-2.969-1.23C10.065 1.258 9.669 1 9.219 1h-.438c-.45 0-.845.258-.997.865a2 2 0 01-2.969 1.23c-.536-.322-.999-.225-1.317.093l-.31.31c-.318.318-.415.781-.093 1.317a2 2 0 01-1.23 2.969C1.26 7.935 1 8.33 1 8.781v.438c0 .45.258.845.865.997a2 2 0 011.23 2.969c-.322.536-.225.998.094 1.316l.31.31c.319.319.782.415 1.316.094a2 2 0 012.969 1.23c.151.607.547.865.997.865h.438c.45 0 .845-.258.997-.865a2 2 0 012.969-1.23c.535.321.997.225 1.316-.094l.31-.31c.318-.318.415-.781.094-1.316a2 2 0 011.23-2.969c.607-.151.865-.547.865-.997v-.438c0-.451-.26-.846-.865-.997zM9 12a3 3 0 110-6 3 3 0 010 6z"></path></symbol><symbol id="plyr-volume" viewBox="0 0 18 18"><path d="M15.6 3.3c-.4-.4-1-.4-1.4 0-.4.4-.4 1 0 1.4C15.4 5.9 16 7.4 16 9c0 1.6-.6 3.1-1.8 4.3-.4.4-.4 1 0 1.4.2.2.5.3.7.3.3 0 .5-.1.7-.3C17.1 13.2 18 11.2 18 9s-.9-4.2-2.4-5.7z"></path><path d="M11.282 5.282a.909.909 0 000 1.316c.735.735.995 1.458.995 2.402 0 .936-.425 1.917-.995 2.487a.909.909 0 000 1.316c.145.145.636.262 1.018.156a.725.725 0 00.298-.156C13.773 11.733 14.13 10.16 14.13 9c0-.17-.002-.34-.011-.51-.053-.992-.319-2.005-1.522-3.208a.909.909 0 00-1.316 0zm-7.496.726H.714C.286 6.008 0 6.31 0 6.76v4.512c0 .452.286.752.714.752h3.072l4.071 3.858c.5.3 1.143 0 1.143-.602V2.752c0-.601-.643-.977-1.143-.601L3.786 6.008z"></path></symbol></svg></div>
 
-    <div class="app-container">
-        
-        <div class="admin-panel">
-            <div class="form-group">
-                <input type="text" id="input-name" placeholder="اسم القناة (إجباري)">
-                <input type="text" id="input-url" placeholder="لينك البث (إجباري)">
-                <input type="text" id="input-logo" placeholder="لينك الصورة (اختياري)">
-                <button class="btn btn-add" onclick="addSingleChannel()">➕ إضافة</button>
+    <div class="app-wrapper">
+        <div class="controls-panel">
+            <div class="input-group">
+                <input type="text" id="i-name" placeholder="اسم القناة">
+                <input type="text" id="i-url" placeholder="رابط البث (m3u8/ts)">
+                <input type="text" id="i-logo" placeholder="رابط اللوجو (اختياري)">
+                <button class="btn btn-add" onclick="addChannel()">➕ إضافة</button>
             </div>
             
-            <div class="upload-wrapper">
-                <input type="file" id="m3u-upload" accept=".m3u,.m3u8,.txt" style="display: none;" onchange="handleFileUpload(event)">
-                <button class="btn btn-upload" onclick="document.getElementById('m3u-upload').click()">📁 استيراد M3U</button>
-                <button class="btn btn-export" onclick="exportToHTML()">💾 حفظ كـ HTML</button>
-                <button class="btn btn-delete-all" onclick="deleteAllChannels()">🗑️ مسح الكل</button>
+            <div class="action-btns">
+                <input type="file" id="file-upload" accept=".m3u,.m3u8,.txt" style="display: none;" onchange="importM3U(event)">
+                <button class="btn btn-upload" onclick="document.getElementById('file-upload').click()">📁 استيراد</button>
+                <button class="btn btn-export" onclick="exportHTML()">💾 تصدير HTML</button>
+                <button class="btn btn-clear" onclick="clearAll()">🗑 مسح الكل</button>
             </div>
         </div>
 
-        <div class="main-content">
-            <div class="player-section">
-                <div class="player-header">
-                    <h1>مشغل إكستريم برو</h1>
-                    <span id="current-channel-name" class="now-playing">اختر قناة للتشغيل...</span>
+        <div class="content-area">
+            <div class="sidebar">
+                <div class="sidebar-header">
+                    <span>القنوات</span>
+                    <span class="badge" id="ch-count">0</span>
                 </div>
-                
-                <div class="top-controls">
-                    <button class="btn-action btn-refresh" onclick="refreshPlayer()" title="تحديث البث">🔄 ريفريش</button>
-                    <button class="btn-action btn-close" onclick="closePlayer()" title="إغلاق البث">❌ إغلاق</button>
-                </div>
-
-                <video id="video" controls="" preload="auto"></video>
+                <ul class="channel-list" id="ch-list"></ul>
             </div>
 
-            <div class="playlist-section">
-                <div class="playlist-header">
-                    <span>قائمة القنوات</span>
-                    <span class="channel-count" id="channel-count">0 قناة</span>
+            <div class="video-container">
+                <div class="video-header">
+                    <div class="now-playing-title" id="np-title">
+                        📺 <span>لم يتم اختيار قناة</span>
+                    </div>
+                    <div class="player-actions">
+                        <button class="btn-icon" onclick="reloadStream()" title="تحديث البث">🔄</button>
+                        <button class="btn-icon" onclick="stopStream()" title="إيقاف">🛑</button>
+                    </div>
                 </div>
-                <ul class="channel-list" id="playlist"></ul>
+
+                <div class="player-wrapper" id="player-wrapper"><video id="video-player" controls="" playsinline="" preload="auto"></video></div>
             </div>
         </div>
-
     </div>
 
     <script>
-        const playlistContainer = document.getElementById('playlist');
-        const videoElement = document.getElementById('video');
-        const currentChannelText = document.getElementById('current-channel-name');
-        const channelCountText = document.getElementById('channel-count');
+        const domList = document.getElementById('ch-list');
+        const domCount = document.getElementById('ch-count');
+        const domTitle = document.querySelector('#np-title span');
+        const iName = document.getElementById('i-name');
+        const iUrl = document.getElementById('i-url');
+        const iLogo = document.getElementById('i-logo');
         
-        const inputName = document.getElementById('input-name');
-        const inputUrl = document.getElementById('input-url');
-        const inputLogo = document.getElementById('input-logo');
-        
-        let hls;
-        let activeStreamUrl = '';
-        let activeStreamName = '';
-        let activeElementRef = null;
+        let plyrInstance;
+        let hlsInstance;
+        let currentUrl = '';
+        let currentName = '';
 
-        // دالة حفظ القنوات في المتصفح أوتوماتيك
-        function saveChannelsToStorage() {
-            localStorage.setItem('iptv_saved_channels', JSON.stringify(channels));
-        }
-
-        // جلب القنوات من الذاكرة المخبأة للمتصفح
         let channels = JSON.parse(localStorage.getItem('iptv_saved_channels')) || [];
 
-        // دي العلامة السحرية اللي هنحقن جواها القنوات وقت التصدير
-        // لو المتصفح مفيهوش قنوات، هيسحب القنوات المحقونة دي
+        // القنوات المحقونة جاهزة للاستخدام لو المتصفح فاضي
         if (channels.length === 0) {
-            const injectedChannels = /*[INJECT_CHANNELS]*/[{"name":"WWE FEED MARVEL  SD","logo":"http://tayaara.store:80/images/marvel/1745087188179.jpg","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/87164"},{"name":"WWE FEED MARVEL  HD","logo":"http://tayaara.store:80/images/marvel/1745087204214.jpg","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/102808"},{"name":"|US| WWE","logo":"http://tayaara.store:80/images/marvel/1717335586141.jpg","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/87170"},{"name":"we can  wwe","logo":"http://tayaara.store:80/images/marvel/1719684640353.jpg","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/395572"},{"name":"IMDB  WWE 1","logo":"http://tayaara.store:80/images/marvel/1718615502226.jpg","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/395571"},{"name":"IMDB   WWE","logo":"http://tayaara.store:80/images/marvel/1718615512213.jpg","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/395570"},{"name":"Majestic  WWE","logo":"http://tayaara.store:80/images/marvel/1716990099438.jpg","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/395569"},{"name":"WATCH  WWE","logo":"http://tayaara.store:80/images/marvel/1719760162433.jpg","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/395568"},{"name":"Usa | Sport: UFC 1 HD","logo":"http://tayaara.store:80/images/marvel/1718441004430.jpg","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/266083"},{"name":"beIN SPORTS 1 LOW H265","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249680"},{"name":"beIN SPORTS 1 Premium LOW H265","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249677"},{"name":"LOCAL beIN SPORTS 2 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/523453"},{"name":"beIN SPORTS 2 LOW H265","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249681"},{"name":"beIN SPORTS 3 LOW H265","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249682"},{"name":"beIN SPORTS 3 Premium LOW H265","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249679"},{"name":"beIN SPORTS 3 SD H265","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249672"},{"name":"LOCAL beIN SPORTS 4 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/523923"},{"name":"beIN SPORTS 4 LOW H265","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249683"},{"name":"beIN SPORTS 4 SD H265","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249673"},{"name":"beIN SPORTS 5 LOW H265","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249684"},{"name":"beIN SPORTS 5 SD H265","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249674"},{"name":"beIN SPORTS 6 LOW H265","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249685"},{"name":"beIN SPORTS 6 SD H265","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249675"},{"name":"beIN SPORTS 7 LOW H265","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249686"},{"name":"beIN SPORTS 7 SD H265","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249676"},{"name":"beIN SPORTS 2 SD H265","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249671"},{"name":"beIN SPORTS 3 Premium SD H265","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249669"},{"name":"beIN SPORTS 2 Premium SD H265","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249668"},{"name":"beIN SPORTS 1 Premium SD H265","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249667"},{"name":"LOCAL beIN SPORTS 9 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249665"},{"name":"LOCAL beIN SPORTS 8 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249664"},{"name":"LOCAL beIN SPORTS 7 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249663"},{"name":"LOCAL beIN SPORTS 6 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249662"},{"name":"LOCAL beIN SPORTS 5 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249661"},{"name":"LOCAL beIN SPORTS 3 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249659"},{"name":"LOCAL beIN SPORTS 1 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249657"},{"name":"Nat Geo People HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/92376"},{"name":"beIN SPORTS 1 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/101092"},{"name":"beIN SPORTS 2 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/101093"},{"name":"beIN SPORTS 3 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/101094"},{"name":"beIN SPORTS 4 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/101095"},{"name":"beIN SPORTS 5 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/101096"},{"name":"beIN SPORTS 6 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/101097"},{"name":"beIN SPORTS 7 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/101098"},{"name":"beIN SPORTS 8 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/101099"},{"name":"beIN SPORTS 9 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/101100"},{"name":"beIN SPORTS GLOBAL 4K","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/221933"},{"name":"beIN SPORTS 1 4K","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214594"},{"name":"beIN SPORTS 2 4K","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214593"},{"name":"beIN SPORTS 3 4K","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214592"},{"name":"beIN SPORTS 4 4K","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214591"},{"name":"beIN SPORTS 5 4K","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214590"},{"name":"beIN SPORTS 6 4K","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214589"},{"name":"beIN SPORTS 7 4K","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214588"},{"name":"beIN SPORTS 8 4K","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214587"},{"name":"beIN SPORTS 9 4K","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214586"},{"name":"ALWAN SPORTS 1 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/485632"},{"name":"ALWAN SPORTS 2 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/485633"},{"name":"ALWAN SPORTS 3 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/485634"},{"name":"ALWAN SPORTS 4 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/485635"},{"name":"ALWAN SPORTS 5 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/485636"},{"name":"ALWAN SPORTS 6 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/485637"},{"name":"beIN SPORTS 1 H.265 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/182208"},{"name":"beIN SPORTS 2 H.265 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/182207"},{"name":"beIN SPORTS 3 H.265 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/182206"},{"name":"beIN SPORTS 4 H.265 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/182205"},{"name":"beIN SPORTS 5 H.265 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/182204"},{"name":"beIN SPORTS 6 H.265 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/182203"},{"name":"beIN SPORTS 7 H.265 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/182202"},{"name":"beIN SPORTS 8 H.265 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/182201"},{"name":"beIN SPORTS 9 H.265 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/182200"},{"name":"beIN SPORTS 1 H.265 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/75625"},{"name":"beIN SPORTS 2 H.265 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/75626"},{"name":"beIN SPORTS 3 H.265 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/75627"},{"name":"beIN SPORTS 4 H.265 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/75628"},{"name":"beIN SPORTS 5 H.265 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/75629"},{"name":"beIN SPORTS 6 H.265 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/75630"},{"name":"beIN SPORTS 7 H.265 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/75631"},{"name":"beIN SPORTS 8 H.265 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/75632"},{"name":"beIN SPORTS 9 H.265 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/75633"},{"name":"beIN SPORTS 1 H.265 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/149327"},{"name":"beIN SPORTS 2 H.265 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/149328"},{"name":"beIN SPORTS 3 H.265 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/502222"},{"name":"beIN SPORTS 4 H.265 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/149330"},{"name":"beIN SPORTS 5 H.265 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/149331"},{"name":"beIN SPORTS 6 H.265 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/149332"},{"name":"beIN SPORTS 7 H.265 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/149333"},{"name":"beIN SPORTS 8 H.265 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/149334"},{"name":"beIN SPORTS 9 H.265 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/149335"},{"name":"beIN SPORTS 1 H.265 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214564"},{"name":"beIN SPORTS 2 H.265 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214563"},{"name":"beIN SPORTS 3 H.265 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214562"},{"name":"beIN SPORTS 4 H.265 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214561"},{"name":"beIN SPORTS 5 H.265 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214560"},{"name":"beIN SPORTS 6 H.265 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214559"},{"name":"beIN SPORTS 7 H.265 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214558"},{"name":"beIN SPORTS 8 H.265 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214557"},{"name":"beIN SPORTS 9 H.265 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214556"},{"name":"beIN SPORTS GLOBAL HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/484979"},{"name":"beIN SPORTS NEWS HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/250335"},{"name":"beIN SPORTS GLOBAL FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/369700"},{"name":"HBO MAX CINEMA 1","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/169274"},{"name":"HBO MAX KIDS 4","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/169236"},{"name":"beIN SPORTS 1 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214574"},{"name":"beIN SPORTS 2 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/523399"},{"name":"beIN SPORTS 3 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214572"},{"name":"beIN SPORTS 4 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214571"},{"name":"beIN SPORTS 5 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214570"},{"name":"beIN SPORTS 6 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214569"},{"name":"beIN SPORTS 7 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214568"},{"name":"beIN SPORTS 8 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214567"},{"name":"beIN SPORTS 9 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214566"},{"name":"beIN SPORTS 1 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214584"},{"name":"beIN SPORTS 2 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214583"},{"name":"beIN SPORTS 3 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214582"},{"name":"beIN SPORTS 4 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214581"},{"name":"beIN SPORTS 5 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214580"},{"name":"beIN SPORTS 6 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214579"},{"name":"beIN SPORTS 7 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214578"},{"name":"beIN SPORTS 8 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214577"},{"name":"beIN SPORTS 9 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214576"},{"name":"beIN SPORTS NBA","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/284023"},{"name":"beIN Xtra SD1","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507687"},{"name":"beIN Xtra HD1","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507678"},{"name":"beIN Xtra 4K 1","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507669"},{"name":"beIN Xtra SD2","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507688"},{"name":"beIN Xtra HD2","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507679"},{"name":"beIN Xtra 4K 2","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507670"},{"name":"beIN Xtra SD3","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507689"},{"name":"beIN Xtra HD3","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507680"},{"name":"beIN Xtra 4K  3","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507671"},{"name":"beIN Xtra SD4","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507690"},{"name":"beIN Xtra HD4","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507681"},{"name":"beIN Xtra 4K 4","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507672"},{"name":"beIN Xtra SD5","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507691"},{"name":"beIN Xtra HD5","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507682"},{"name":"beIN Xtra 4K 5","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507673"},{"name":"beIN Xtra SD6","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507692"},{"name":"beIN Xtra HD6","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507683"},{"name":"beIN Xtra 4K 6","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507674"},{"name":"beIN Xtra SD7","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507693"},{"name":"beIN Xtra HD7","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507684"},{"name":"beIN Xtra 4K 7","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507675"},{"name":"beIN Xtra SD8","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507694"},{"name":"beIN Xtra HD8","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507685"},{"name":"beIN Xtra 4K 8","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507676"},{"name":"beIN Xtra SD9","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507695"},{"name":"beIN Xtra HD9","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507686"},{"name":"beIN Xtra 4K 9","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507677"},{"name":"beIN SPORTS AFC SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/288729"},{"name":"beIN SPORTS AFC HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/288726"},{"name":"beIN SPORTS AFC 4K","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/288725"},{"name":"beIN SPORTS AFC 1 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/322219"},{"name":"beIN SPORTS AFC 1 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/322222"},{"name":"beIN SPORTS AFC 2 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/322220"},{"name":"beIN SPORTS AFC 2 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/322223"},{"name":"beIN SPORTS AFC 3 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/322221"},{"name":"beIN SPORTS AFC 3 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/322224"},{"name":"beIN SPORTS AFC 4 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/322383"},{"name":"beIN SPORTS AFC 4 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/322382"},{"name":"beIN SPORTS ENGLISH 1 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/334531"},{"name":"beIN SPORTS ENGLISH 2 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/334532"},{"name":"beIN SPORTS ENGLISH 1 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/334529"},{"name":"beIN SPORTS ENGLISH 2 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/334530"},{"name":"beIN SPORTS ENGLISH 1 4K","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/334527"},{"name":"beIN SPORTS ENGLISH 2 4K","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/334528"},{"name":"beIN SPORTS French 1 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/382888"},{"name":"beIN SPORTS French 2 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/382887"},{"name":"beIN SPORTS French 1 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/382886"},{"name":"beIN SPORTS French 2 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/382885"},{"name":"beIN SPORTS French 1 4K","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/382884"},{"name":"beIN SPORTS French 2 4K","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/382883"},{"name":"FEED MARVEL 1 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/386807"},{"name":"FEED MARVEL 1 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/363991"},{"name":"FEED MARVEL 2 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/362519"},{"name":"FEED MARVEL 3 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/386805"},{"name":"FEED MARVEL 3 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/386806"},{"name":"FEED MARVEL 4 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/359294"},{"name":"FEED MARVEL 4 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/359293"},{"name":"beIN SPORTS 1 MINI","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/523396"},{"name":"beIN SPORTS 2 MINI","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/178701"},{"name":"beIN SPORTS 3 MINI","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/178700"},{"name":"beIN SPORTS 4 MINI","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/178699"},{"name":"beIN SPORTS 5 MINI","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/178698"},{"name":"beIN SPORTS 6 MINI","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/178697"},{"name":"beIN SPORTS 7 MINI","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/178696"},{"name":"beIN SPORTS 8 MINI","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/178695"},{"name":"beIN SPORTS 9 MINI","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/523419"},{"name":"beIN SPORTS 1 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/178670"},{"name":"beIN SPORTS 2 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/178669"},{"name":"beIN SPORTS 3 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/499321"},{"name":"beIN SPORTS 4 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/178667"},{"name":"beIN SPORTS 5 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/178666"},{"name":"beIN SPORTS 6 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/178665"},{"name":"beIN SPORTS 7 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/178664"},{"name":"beIN SPORTS 8 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/178663"},{"name":"beIN SPORTS 9 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/178662"},{"name":"ALWAN SPORTS 1 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/485632"},{"name":"ALWAN SPORTS 2 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/485633"},{"name":"ALWAN SPORTS 3 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/485634"},{"name":"ALWAN SPORTS 4 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/485635"},{"name":"ALWAN SPORTS 5 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/485636"},{"name":"ALWAN SPORTS 6 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/485637"},{"name":"Arabs Got Talent","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/379523"},{"name":"RedBull Tv","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/379521"},{"name":"DRAMA TURKY","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/358676"},{"name":"Movies Action","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/352140"},{"name":"MBC MASR DRAMA","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/401613"},{"name":"MBC MASR DRAMA HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/401448"},{"name":"MBC PERSIA HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/401442"},{"name":"MBC 1 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/269332"},{"name":"MBC 2 4K","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/269331"},{"name":"MBC 4 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/269329"},{"name":"MBC 5 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/269328"},{"name":"MBC BOLLYWOOD SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/269325"},{"name":"AR: MBC IRAQ SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/269323"},{"name":"Rotana Drama","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/267893"},{"name":"MBC 1 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/99366"},{"name":"MBC 2 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/99367"},{"name":"MBC 3 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/99368"},{"name":"MBC 4 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/99369"},{"name":"MBC 5 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/99370"},{"name":"MBC MASR 1 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/456981"},{"name":"MBC MASR 1 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/99359"},{"name":"MBC MASR 2 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/456980"},{"name":"MBC MASR 2 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/99361"},{"name":"MBC DRAMA HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/99362"},{"name":"MBC DRAMA+ HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/99347"},{"name":"MBC VARIETY FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/99364"},{"name":"MBC IRAQ HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/99365"},{"name":"MBC MAX FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/99371"},{"name":"MBC ACTION FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/99372"},{"name":"MBC BOLLYWOOD HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/99373"},{"name":"ZEE ALWAN HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/261263"},{"name":"ZEE ALWAN SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/261539"},{"name":"Rotana Cinema EGY 4K","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/102723"},{"name":"ROTANA CINEMA KSA HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/102722"},{"name":"ROTANA DRAMA HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/102726"},{"name":"ROTANA +","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/102727"},{"name":"ROTANA COMEDY HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/102725"},{"name":"ROTANA CLASSIC HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/102724"},{"name":"ROTANA KIDS","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/102729"},{"name":"Rotana Khalijia FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/102728"},{"name":"OSN YA HALA","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/273005"},{"name":"OSN YA HALA ARABI","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/273004"},{"name":"OSN YA HALA AFLAM","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/273003"},{"name":"OSN Alfa Musalsalat HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/273002"},{"name":"OSN Alfa Musalsalat 2 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/273001"},{"name":"OSN Alfa Cinema 1 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/273000"},{"name":"OSN Alfa Cinema 2 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272999"},{"name":"OSN Alfa AlFann HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/366090"},{"name":"OSN Alfa Al Safwa HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/366089"},{"name":"OSN STAR MOVIES","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272998"},{"name":"OSN Alfa Alyoum HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272996"},{"name":"OSN Alfa Music Now HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272994"},{"name":"OSN FANN","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272993"},{"name":"OSN MOVIES PREMIERE HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272990"},{"name":"OSN MOVIES HOLYWOOD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272989"},{"name":"OSN Family HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/366103"},{"name":"OSN Showcase Classic HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/366102"},{"name":"OSN Crime HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/366101"},{"name":"OSN Crime Investigation HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/366100"},{"name":"OSN TV One HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/366099"},{"name":"OSN WWE","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/366098"},{"name":"OSN Now HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/366097"},{"name":"OSN News HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/366096"},{"name":"OSN Fatafeat HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/366095"},{"name":"OSN Animal HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/366094"},{"name":"OSN Moonbug Kids","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/366093"},{"name":"OSN Nick Toon HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/366092"},{"name":"OSN Cartoon Network HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/366091"},{"name":"OSN ACTION","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272988"},{"name":"OSN SHOWCASE","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272987"},{"name":"OSN COMEDY","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272986"},{"name":"OSN WOMAN","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272985"},{"name":"OSN LIVING","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272984"},{"name":"OSN TLC","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272983"},{"name":"OSN E!","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272982"},{"name":"OSN FASHION TV","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272980"},{"name":"OSN DISNEY CHANNEL","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272979"},{"name":"OSN DISNEY JUNIOR","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272977"},{"name":"OSN KIDS","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272976"},{"name":"OSN KIDS ZONE TV","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272975"},{"name":"OSN NICK JR","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272974"},{"name":"OSN NICKELODEON","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272973"},{"name":"National Geographic Abu Dhabi","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/318063"},{"name":"OSN NAT GEO WILD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272971"},{"name":"OSN NAT GEO","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272970"},{"name":"OSN NAT GEO PEOPLE","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272969"},{"name":"OSN DISCOVERY","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272968"},{"name":"OSN DISCOVERY SCIENCE","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272967"},{"name":"OSN DISCOVERY ID","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272966"},{"name":"OSN HISTORY","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272965"},{"name":"OSN H2 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272964"},{"name":"OSN Meezze HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272963"},{"name":"OSN- POP UP FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203193"},{"name":"OSN- MOVIES FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203192"},{"name":"OSN- Movies First FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203191"},{"name":"OSN- Action HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203190"},{"name":"OSN- Movies First +2 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203189"},{"name":"OSN- On Demand FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203188"},{"name":"OSN Family","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203187"},{"name":"OSN- KIDS FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203186"},{"name":"OSN BOX OFFICE 1","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/229403"},{"name":"OSN- PLAY MOVIES 1 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203185"},{"name":"OSN- PLAY MOVIES 2 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203184"},{"name":"OSN- PLAY MOVIES 3 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203183"},{"name":"OSN- PLAY MOVIES 4 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203182"},{"name":"OSN- PLAY CINEMA 1 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203181"},{"name":"OSN- PLAY CINEMA 2 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203180"},{"name":"OSN- PLAY CINEMA 3 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203179"},{"name":"OSN- PLAY CINEMA 4 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203178"},{"name":"OSN- Enigma FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203177"},{"name":"OSN- Movies Comedy FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203176"},{"name":"OSN Art Cinema","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/82701"},{"name":"OSN Art Aflam 1","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/82702"},{"name":"OSN Art Aflam 2","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/82703"},{"name":"OSN Art Hekayat 1","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/82704"},{"name":"OSN Art Hekayat 2","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/82705"},{"name":"beIN MOVIES PREMIERE 1 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/101132"},{"name":"beIN MOVIES ACTION 2 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/101134"},{"name":"beIN MOVIES 3 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/101136"},{"name":"beIN MOVIES 4 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/101138"},{"name":"beIN CINEMA HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86610"},{"name":"beIN BOX OFFICE 1 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86614"},{"name":"beIN BOX OFFICE 2 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/334533"},{"name":"beIN SERIES 1 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/101142"},{"name":"beIN SERIES 2 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/101144"},{"name":"beIN DRAMA 1 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/101140"},{"name":"beIN FOX MOVIES HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86609"},{"name":"beIN FOX ACTION MOVIES HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86612"},{"name":"beIN FOX LIFE HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86615"},{"name":"beIN STAR MOVIES HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86617"},{"name":"DTX","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/124144"},{"name":"BEIN ANIMAL PLANET","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86618"},{"name":"BEIN FOOD NETWORK HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86619"},{"name":"Bein Nat Geo HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86622"},{"name":"NATGEO WILD HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86623"},{"name":"BEIN  GOURMET","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86625"},{"name":"Bein BBC Earth HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86626"},{"name":"BEIN OUTDOOR","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86628"},{"name":"BEIN DREAM WOKRS","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86629"},{"name":"BEIN FATAFEAT","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86632"},{"name":"beIN HGTV","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86759"},{"name":"Bein Boomerang HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86760"},{"name":"Bein Baraem HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86762"},{"name":"VIP AR: beIN DRAMA 4K","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/204737"},{"name":"Nat Geo People HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/92376"},{"name":"Majestic WWE","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/102204"},{"name":"Majestic TOM AND JERRY","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/102206"},{"name":"Shasha TV SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490718"},{"name":"Shasha TV 2 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490719"},{"name":"Shasha TV HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490720"},{"name":"Shasha TV 2 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490721"},{"name":"Shasha TV 4k","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490723"},{"name":"Shasha TV 2 4K","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490722"},{"name":"THMANYAH 1 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/474870"},{"name":"THMANYAH 1 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/474871"},{"name":"THMANYAH 1 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/474872"},{"name":"THMANYAH 2 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/474866"},{"name":"THMANYAH 2 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/474867"},{"name":"THMANYAH 2 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/474868"},{"name":"THMANYAH 3 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/474862"},{"name":"THMANYAH 3 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/474863"},{"name":"THMANYAH 3 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/474864"},{"name":"Shahid Sport 1 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490733"},{"name":"Shahid Sport 2 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490730"},{"name":"Shahid Sport 3 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490727"},{"name":"Shahid Sport 4 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490724"},{"name":"Shahid Sport 1 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490734"},{"name":"Shahid Sport 2 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490731"},{"name":"Shahid Sport 3 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490728"},{"name":"Shahid Sport 4 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490725"},{"name":"Shahid Sport 1 4k","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490735"},{"name":"Shahid Sport 2 4K","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490732"},{"name":"Shahid Sport 3 4k","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490729"},{"name":"Shahid Sport 4 4k","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490726"},{"name":"STARZPLAY CricLife 1","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/476909"},{"name":"STARZPLAY CricLife 2","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/476908"},{"name":"STARZPLAY CricLife 3","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/476907"},{"name":"STARZPLAY Criclife max","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/476906"},{"name":"STARZPLAY GOLF","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/476905"},{"name":"STARZPLAY Sports 1 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/476913"},{"name":"STARZPLAY Sports 2 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/476912"},{"name":"STARZPLAY Sports 2 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/476911"},{"name":"STARZPLAY Sports 2 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/476910"},{"name":"STARZPLAY Sports 3 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/476918"},{"name":"STARZPLAY Sports 3 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/476917"},{"name":"STARZPLAY Sports 3 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/476916"},{"name":"AL-FAJER TV 1 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/262165"},{"name":"AL-FAJER TV 1 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/262166"},{"name":"AL-FAJER TV 2 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/262162"},{"name":"AL-FAJER TV 2 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/262163"},{"name":"AL-FAJER TV 3 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/262159"},{"name":"AL-FAJER TV 3 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/262160"},{"name":"AL-FAJER TV 4 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/262156"},{"name":"AL-FAJER TV 4 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/262157"},{"name":"AL-FAJER TV 5 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/262153"},{"name":"AL-FAJER TV 5 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/262154"},{"name":"WWE FEED MARVEL  SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/87164"},{"name":"WWE FEED MARVEL  HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/102808"},{"name":"|US| WWE","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/87170"},{"name":"we can  wwe","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/395572"},{"name":"IMDB  WWE 1","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/395571"},{"name":"IMDB   WWE","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/395570"},{"name":"Majestic  WWE","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/395569"},{"name":"WATCH  WWE","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/395568"},{"name":"Usa | Sport: UFC 1 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/266083"}]/*[/INJECT_CHANNELS]*/;
-            if (injectedChannels && injectedChannels.length > 0) {
-                channels = injectedChannels;
-                saveChannelsToStorage();
+            const injected = /*[INJECT_CHANNELS]*/[{"name":"WWE FEED MARVEL  SD","logo":"http://tayaara.store:80/images/marvel/1745087188179.jpg","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/87164"},{"name":"WWE FEED MARVEL  HD","logo":"http://tayaara.store:80/images/marvel/1745087204214.jpg","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/102808"},{"name":"|US| WWE","logo":"http://tayaara.store:80/images/marvel/1717335586141.jpg","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/87170"},{"name":"we can  wwe","logo":"http://tayaara.store:80/images/marvel/1719684640353.jpg","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/395572"},{"name":"IMDB  WWE 1","logo":"http://tayaara.store:80/images/marvel/1718615502226.jpg","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/395571"},{"name":"IMDB   WWE","logo":"http://tayaara.store:80/images/marvel/1718615512213.jpg","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/395570"},{"name":"Majestic  WWE","logo":"http://tayaara.store:80/images/marvel/1716990099438.jpg","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/395569"},{"name":"WATCH  WWE","logo":"http://tayaara.store:80/images/marvel/1719760162433.jpg","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/395568"},{"name":"Usa | Sport: UFC 1 HD","logo":"http://tayaara.store:80/images/marvel/1718441004430.jpg","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/266083"},{"name":"beIN SPORTS 1 LOW H265","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249680"},{"name":"beIN SPORTS 1 Premium LOW H265","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249677"},{"name":"LOCAL beIN SPORTS 2 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/523453"},{"name":"beIN SPORTS 2 LOW H265","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249681"},{"name":"beIN SPORTS 3 LOW H265","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249682"},{"name":"beIN SPORTS 3 Premium LOW H265","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249679"},{"name":"beIN SPORTS 3 SD H265","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249672"},{"name":"LOCAL beIN SPORTS 4 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/523923"},{"name":"beIN SPORTS 4 LOW H265","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249683"},{"name":"beIN SPORTS 4 SD H265","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249673"},{"name":"beIN SPORTS 5 LOW H265","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249684"},{"name":"beIN SPORTS 5 SD H265","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249674"},{"name":"beIN SPORTS 6 LOW H265","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249685"},{"name":"beIN SPORTS 6 SD H265","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249675"},{"name":"beIN SPORTS 7 LOW H265","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249686"},{"name":"beIN SPORTS 7 SD H265","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249676"},{"name":"beIN SPORTS 2 SD H265","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249671"},{"name":"beIN SPORTS 3 Premium SD H265","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249669"},{"name":"beIN SPORTS 2 Premium SD H265","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249668"},{"name":"beIN SPORTS 1 Premium SD H265","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249667"},{"name":"LOCAL beIN SPORTS 9 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249665"},{"name":"LOCAL beIN SPORTS 8 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249664"},{"name":"LOCAL beIN SPORTS 7 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249663"},{"name":"LOCAL beIN SPORTS 6 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249662"},{"name":"LOCAL beIN SPORTS 5 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249661"},{"name":"LOCAL beIN SPORTS 3 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249659"},{"name":"LOCAL beIN SPORTS 1 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/249657"},{"name":"Nat Geo People HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/92376"},{"name":"beIN SPORTS 1 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/101092"},{"name":"beIN SPORTS 2 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/101093"},{"name":"beIN SPORTS 3 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/101094"},{"name":"beIN SPORTS 4 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/101095"},{"name":"beIN SPORTS 5 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/101096"},{"name":"beIN SPORTS 6 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/101097"},{"name":"beIN SPORTS 7 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/101098"},{"name":"beIN SPORTS 8 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/101099"},{"name":"beIN SPORTS 9 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/101100"},{"name":"beIN SPORTS GLOBAL 4K","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/221933"},{"name":"beIN SPORTS 1 4K","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214594"},{"name":"beIN SPORTS 2 4K","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214593"},{"name":"beIN SPORTS 3 4K","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214592"},{"name":"beIN SPORTS 4 4K","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214591"},{"name":"beIN SPORTS 5 4K","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214590"},{"name":"beIN SPORTS 6 4K","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214589"},{"name":"beIN SPORTS 7 4K","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214588"},{"name":"beIN SPORTS 8 4K","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214587"},{"name":"beIN SPORTS 9 4K","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214586"},{"name":"ALWAN SPORTS 1 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/485632"},{"name":"ALWAN SPORTS 2 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/485633"},{"name":"ALWAN SPORTS 3 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/485634"},{"name":"ALWAN SPORTS 4 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/485635"},{"name":"ALWAN SPORTS 5 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/485636"},{"name":"ALWAN SPORTS 6 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/485637"},{"name":"beIN SPORTS 1 H.265 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/182208"},{"name":"beIN SPORTS 2 H.265 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/182207"},{"name":"beIN SPORTS 3 H.265 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/182206"},{"name":"beIN SPORTS 4 H.265 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/182205"},{"name":"beIN SPORTS 5 H.265 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/182204"},{"name":"beIN SPORTS 6 H.265 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/182203"},{"name":"beIN SPORTS 7 H.265 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/182202"},{"name":"beIN SPORTS 8 H.265 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/182201"},{"name":"beIN SPORTS 9 H.265 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/182200"},{"name":"beIN SPORTS 1 H.265 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/75625"},{"name":"beIN SPORTS 2 H.265 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/75626"},{"name":"beIN SPORTS 3 H.265 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/75627"},{"name":"beIN SPORTS 4 H.265 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/75628"},{"name":"beIN SPORTS 5 H.265 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/75629"},{"name":"beIN SPORTS 6 H.265 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/75630"},{"name":"beIN SPORTS 7 H.265 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/75631"},{"name":"beIN SPORTS 8 H.265 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/75632"},{"name":"beIN SPORTS 9 H.265 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/75633"},{"name":"beIN SPORTS 1 H.265 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/149327"},{"name":"beIN SPORTS 2 H.265 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/149328"},{"name":"beIN SPORTS 3 H.265 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/502222"},{"name":"beIN SPORTS 4 H.265 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/149330"},{"name":"beIN SPORTS 5 H.265 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/149331"},{"name":"beIN SPORTS 6 H.265 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/149332"},{"name":"beIN SPORTS 7 H.265 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/149333"},{"name":"beIN SPORTS 8 H.265 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/149334"},{"name":"beIN SPORTS 9 H.265 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/149335"},{"name":"beIN SPORTS 1 H.265 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214564"},{"name":"beIN SPORTS 2 H.265 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214563"},{"name":"beIN SPORTS 3 H.265 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214562"},{"name":"beIN SPORTS 4 H.265 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214561"},{"name":"beIN SPORTS 5 H.265 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214560"},{"name":"beIN SPORTS 6 H.265 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214559"},{"name":"beIN SPORTS 7 H.265 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214558"},{"name":"beIN SPORTS 8 H.265 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214557"},{"name":"beIN SPORTS 9 H.265 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214556"},{"name":"beIN SPORTS GLOBAL HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/484979"},{"name":"beIN SPORTS NEWS HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/250335"},{"name":"beIN SPORTS GLOBAL FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/369700"},{"name":"HBO MAX CINEMA 1","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/169274"},{"name":"HBO MAX KIDS 4","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/169236"},{"name":"beIN SPORTS 1 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214574"},{"name":"beIN SPORTS 2 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/523399"},{"name":"beIN SPORTS 3 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214572"},{"name":"beIN SPORTS 4 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214571"},{"name":"beIN SPORTS 5 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214570"},{"name":"beIN SPORTS 6 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214569"},{"name":"beIN SPORTS 7 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214568"},{"name":"beIN SPORTS 8 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214567"},{"name":"beIN SPORTS 9 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214566"},{"name":"beIN SPORTS 1 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214584"},{"name":"beIN SPORTS 2 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214583"},{"name":"beIN SPORTS 3 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214582"},{"name":"beIN SPORTS 4 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214581"},{"name":"beIN SPORTS 5 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214580"},{"name":"beIN SPORTS 6 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214579"},{"name":"beIN SPORTS 7 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214578"},{"name":"beIN SPORTS 8 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214577"},{"name":"beIN SPORTS 9 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/214576"},{"name":"beIN SPORTS NBA","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/284023"},{"name":"beIN Xtra SD1","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507687"},{"name":"beIN Xtra HD1","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507678"},{"name":"beIN Xtra 4K 1","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507669"},{"name":"beIN Xtra SD2","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507688"},{"name":"beIN Xtra HD2","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507679"},{"name":"beIN Xtra 4K 2","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507670"},{"name":"beIN Xtra SD3","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507689"},{"name":"beIN Xtra HD3","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507680"},{"name":"beIN Xtra 4K  3","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507671"},{"name":"beIN Xtra SD4","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507690"},{"name":"beIN Xtra HD4","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507681"},{"name":"beIN Xtra 4K 4","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507672"},{"name":"beIN Xtra SD5","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507691"},{"name":"beIN Xtra HD5","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507682"},{"name":"beIN Xtra 4K 5","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507673"},{"name":"beIN Xtra SD6","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507692"},{"name":"beIN Xtra HD6","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507683"},{"name":"beIN Xtra 4K 6","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507674"},{"name":"beIN Xtra SD7","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507693"},{"name":"beIN Xtra HD7","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507684"},{"name":"beIN Xtra 4K 7","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507675"},{"name":"beIN Xtra SD8","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507694"},{"name":"beIN Xtra HD8","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507685"},{"name":"beIN Xtra 4K 8","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507676"},{"name":"beIN Xtra SD9","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507695"},{"name":"beIN Xtra HD9","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507686"},{"name":"beIN Xtra 4K 9","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/507677"},{"name":"beIN SPORTS AFC SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/288729"},{"name":"beIN SPORTS AFC HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/288726"},{"name":"beIN SPORTS AFC 4K","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/288725"},{"name":"beIN SPORTS AFC 1 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/322219"},{"name":"beIN SPORTS AFC 1 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/322222"},{"name":"beIN SPORTS AFC 2 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/322220"},{"name":"beIN SPORTS AFC 2 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/322223"},{"name":"beIN SPORTS AFC 3 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/322221"},{"name":"beIN SPORTS AFC 3 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/322224"},{"name":"beIN SPORTS AFC 4 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/322383"},{"name":"beIN SPORTS AFC 4 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/322382"},{"name":"beIN SPORTS ENGLISH 1 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/334531"},{"name":"beIN SPORTS ENGLISH 2 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/334532"},{"name":"beIN SPORTS ENGLISH 1 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/334529"},{"name":"beIN SPORTS ENGLISH 2 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/334530"},{"name":"beIN SPORTS ENGLISH 1 4K","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/334527"},{"name":"beIN SPORTS ENGLISH 2 4K","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/334528"},{"name":"beIN SPORTS French 1 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/382888"},{"name":"beIN SPORTS French 2 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/382887"},{"name":"beIN SPORTS French 1 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/382886"},{"name":"beIN SPORTS French 2 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/382885"},{"name":"beIN SPORTS French 1 4K","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/382884"},{"name":"beIN SPORTS French 2 4K","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/382883"},{"name":"FEED MARVEL 1 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/386807"},{"name":"FEED MARVEL 1 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/363991"},{"name":"FEED MARVEL 2 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/362519"},{"name":"FEED MARVEL 3 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/386805"},{"name":"FEED MARVEL 3 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/386806"},{"name":"FEED MARVEL 4 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/359294"},{"name":"FEED MARVEL 4 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/359293"},{"name":"beIN SPORTS 1 MINI","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/523396"},{"name":"beIN SPORTS 2 MINI","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/178701"},{"name":"beIN SPORTS 3 MINI","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/178700"},{"name":"beIN SPORTS 4 MINI","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/178699"},{"name":"beIN SPORTS 5 MINI","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/178698"},{"name":"beIN SPORTS 6 MINI","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/178697"},{"name":"beIN SPORTS 7 MINI","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/178696"},{"name":"beIN SPORTS 8 MINI","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/178695"},{"name":"beIN SPORTS 9 MINI","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/523419"},{"name":"beIN SPORTS 1 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/178670"},{"name":"beIN SPORTS 2 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/178669"},{"name":"beIN SPORTS 3 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/499321"},{"name":"beIN SPORTS 4 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/178667"},{"name":"beIN SPORTS 5 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/178666"},{"name":"beIN SPORTS 6 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/178665"},{"name":"beIN SPORTS 7 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/178664"},{"name":"beIN SPORTS 8 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/178663"},{"name":"beIN SPORTS 9 LOW","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/178662"},{"name":"ALWAN SPORTS 1 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/485632"},{"name":"ALWAN SPORTS 2 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/485633"},{"name":"ALWAN SPORTS 3 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/485634"},{"name":"ALWAN SPORTS 4 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/485635"},{"name":"ALWAN SPORTS 5 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/485636"},{"name":"ALWAN SPORTS 6 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/485637"},{"name":"Arabs Got Talent","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/379523"},{"name":"RedBull Tv","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/379521"},{"name":"DRAMA TURKY","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/358676"},{"name":"Movies Action","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/352140"},{"name":"MBC MASR DRAMA","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/401613"},{"name":"MBC MASR DRAMA HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/401448"},{"name":"MBC PERSIA HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/401442"},{"name":"MBC 1 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/269332"},{"name":"MBC 2 4K","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/269331"},{"name":"MBC 4 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/269329"},{"name":"MBC 5 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/269328"},{"name":"MBC BOLLYWOOD SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/269325"},{"name":"AR: MBC IRAQ SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/269323"},{"name":"Rotana Drama","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/267893"},{"name":"MBC 1 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/99366"},{"name":"MBC 2 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/99367"},{"name":"MBC 3 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/99368"},{"name":"MBC 4 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/99369"},{"name":"MBC 5 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/99370"},{"name":"MBC MASR 1 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/456981"},{"name":"MBC MASR 1 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/99359"},{"name":"MBC MASR 2 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/456980"},{"name":"MBC MASR 2 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/99361"},{"name":"MBC DRAMA HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/99362"},{"name":"MBC DRAMA+ HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/99347"},{"name":"MBC VARIETY FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/99364"},{"name":"MBC IRAQ HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/99365"},{"name":"MBC MAX FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/99371"},{"name":"MBC ACTION FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/99372"},{"name":"MBC BOLLYWOOD HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/99373"},{"name":"ZEE ALWAN HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/261263"},{"name":"ZEE ALWAN SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/261539"},{"name":"Rotana Cinema EGY 4K","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/102723"},{"name":"ROTANA CINEMA KSA HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/102722"},{"name":"ROTANA DRAMA HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/102726"},{"name":"ROTANA +","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/102727"},{"name":"ROTANA COMEDY HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/102725"},{"name":"ROTANA CLASSIC HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/102724"},{"name":"ROTANA KIDS","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/102729"},{"name":"Rotana Khalijia FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/102728"},{"name":"OSN YA HALA","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/273005"},{"name":"OSN YA HALA ARABI","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/273004"},{"name":"OSN YA HALA AFLAM","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/273003"},{"name":"OSN Alfa Musalsalat HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/273002"},{"name":"OSN Alfa Musalsalat 2 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/273001"},{"name":"OSN Alfa Cinema 1 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/273000"},{"name":"OSN Alfa Cinema 2 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272999"},{"name":"OSN Alfa AlFann HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/366090"},{"name":"OSN Alfa Al Safwa HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/366089"},{"name":"OSN STAR MOVIES","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272998"},{"name":"OSN Alfa Alyoum HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272996"},{"name":"OSN Alfa Music Now HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272994"},{"name":"OSN FANN","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272993"},{"name":"OSN MOVIES PREMIERE HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272990"},{"name":"OSN MOVIES HOLYWOOD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272989"},{"name":"OSN Family HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/366103"},{"name":"OSN Showcase Classic HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/366102"},{"name":"OSN Crime HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/366101"},{"name":"OSN Crime Investigation HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/366100"},{"name":"OSN TV One HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/366099"},{"name":"OSN WWE","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/366098"},{"name":"OSN Now HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/366097"},{"name":"OSN News HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/366096"},{"name":"OSN Fatafeat HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/366095"},{"name":"OSN Animal HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/366094"},{"name":"OSN Moonbug Kids","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/366093"},{"name":"OSN Nick Toon HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/366092"},{"name":"OSN Cartoon Network HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/366091"},{"name":"OSN ACTION","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272988"},{"name":"OSN SHOWCASE","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272987"},{"name":"OSN COMEDY","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272986"},{"name":"OSN WOMAN","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272985"},{"name":"OSN LIVING","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272984"},{"name":"OSN TLC","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272983"},{"name":"OSN E!","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272982"},{"name":"OSN FASHION TV","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272980"},{"name":"OSN DISNEY CHANNEL","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272979"},{"name":"OSN DISNEY JUNIOR","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272977"},{"name":"OSN KIDS","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272976"},{"name":"OSN KIDS ZONE TV","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272975"},{"name":"OSN NICK JR","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272974"},{"name":"OSN NICKELODEON","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272973"},{"name":"National Geographic Abu Dhabi","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/318063"},{"name":"OSN NAT GEO WILD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272971"},{"name":"OSN NAT GEO","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272970"},{"name":"OSN NAT GEO PEOPLE","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272969"},{"name":"OSN DISCOVERY","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272968"},{"name":"OSN DISCOVERY SCIENCE","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272967"},{"name":"OSN DISCOVERY ID","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272966"},{"name":"OSN HISTORY","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272965"},{"name":"OSN H2 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272964"},{"name":"OSN Meezze HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/272963"},{"name":"OSN- POP UP FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203193"},{"name":"OSN- MOVIES FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203192"},{"name":"OSN- Movies First FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203191"},{"name":"OSN- Action HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203190"},{"name":"OSN- Movies First +2 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203189"},{"name":"OSN- On Demand FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203188"},{"name":"OSN Family","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203187"},{"name":"OSN- KIDS FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203186"},{"name":"OSN BOX OFFICE 1","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/229403"},{"name":"OSN- PLAY MOVIES 1 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203185"},{"name":"OSN- PLAY MOVIES 2 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203184"},{"name":"OSN- PLAY MOVIES 3 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203183"},{"name":"OSN- PLAY MOVIES 4 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203182"},{"name":"OSN- PLAY CINEMA 1 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203181"},{"name":"OSN- PLAY CINEMA 2 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203180"},{"name":"OSN- PLAY CINEMA 3 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203179"},{"name":"OSN- PLAY CINEMA 4 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203178"},{"name":"OSN- Enigma FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203177"},{"name":"OSN- Movies Comedy FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/203176"},{"name":"OSN Art Cinema","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/82701"},{"name":"OSN Art Aflam 1","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/82702"},{"name":"OSN Art Aflam 2","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/82703"},{"name":"OSN Art Hekayat 1","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/82704"},{"name":"OSN Art Hekayat 2","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/82705"},{"name":"beIN MOVIES PREMIERE 1 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/101132"},{"name":"beIN MOVIES ACTION 2 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/101134"},{"name":"beIN MOVIES 3 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/101136"},{"name":"beIN MOVIES 4 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/101138"},{"name":"beIN CINEMA HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86610"},{"name":"beIN BOX OFFICE 1 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86614"},{"name":"beIN BOX OFFICE 2 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/334533"},{"name":"beIN SERIES 1 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/101142"},{"name":"beIN SERIES 2 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/101144"},{"name":"beIN DRAMA 1 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/101140"},{"name":"beIN FOX MOVIES HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86609"},{"name":"beIN FOX ACTION MOVIES HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86612"},{"name":"beIN FOX LIFE HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86615"},{"name":"beIN STAR MOVIES HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86617"},{"name":"DTX","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/124144"},{"name":"BEIN ANIMAL PLANET","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86618"},{"name":"BEIN FOOD NETWORK HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86619"},{"name":"Bein Nat Geo HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86622"},{"name":"NATGEO WILD HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86623"},{"name":"BEIN  GOURMET","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86625"},{"name":"Bein BBC Earth HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86626"},{"name":"BEIN OUTDOOR","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86628"},{"name":"BEIN DREAM WOKRS","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86629"},{"name":"BEIN FATAFEAT","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86632"},{"name":"beIN HGTV","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86759"},{"name":"Bein Boomerang HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86760"},{"name":"Bein Baraem HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/86762"},{"name":"VIP AR: beIN DRAMA 4K","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/204737"},{"name":"Nat Geo People HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/92376"},{"name":"Majestic WWE","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/102204"},{"name":"Majestic TOM AND JERRY","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/102206"},{"name":"Shasha TV SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490718"},{"name":"Shasha TV 2 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490719"},{"name":"Shasha TV HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490720"},{"name":"Shasha TV 2 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490721"},{"name":"Shasha TV 4k","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490723"},{"name":"Shasha TV 2 4K","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490722"},{"name":"THMANYAH 1 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/474870"},{"name":"THMANYAH 1 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/474871"},{"name":"THMANYAH 1 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/474872"},{"name":"THMANYAH 2 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/474866"},{"name":"THMANYAH 2 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/474867"},{"name":"THMANYAH 2 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/474868"},{"name":"THMANYAH 3 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/474862"},{"name":"THMANYAH 3 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/474863"},{"name":"THMANYAH 3 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/474864"},{"name":"Shahid Sport 1 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490733"},{"name":"Shahid Sport 2 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490730"},{"name":"Shahid Sport 3 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490727"},{"name":"Shahid Sport 4 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490724"},{"name":"Shahid Sport 1 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490734"},{"name":"Shahid Sport 2 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490731"},{"name":"Shahid Sport 3 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490728"},{"name":"Shahid Sport 4 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490725"},{"name":"Shahid Sport 1 4k","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490735"},{"name":"Shahid Sport 2 4K","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490732"},{"name":"Shahid Sport 3 4k","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490729"},{"name":"Shahid Sport 4 4k","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/490726"},{"name":"STARZPLAY CricLife 1","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/476909"},{"name":"STARZPLAY CricLife 2","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/476908"},{"name":"STARZPLAY CricLife 3","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/476907"},{"name":"STARZPLAY Criclife max","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/476906"},{"name":"STARZPLAY GOLF","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/476905"},{"name":"STARZPLAY Sports 1 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/476913"},{"name":"STARZPLAY Sports 2 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/476912"},{"name":"STARZPLAY Sports 2 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/476911"},{"name":"STARZPLAY Sports 2 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/476910"},{"name":"STARZPLAY Sports 3 SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/476918"},{"name":"STARZPLAY Sports 3 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/476917"},{"name":"STARZPLAY Sports 3 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/476916"},{"name":"AL-FAJER TV 1 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/262165"},{"name":"AL-FAJER TV 1 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/262166"},{"name":"AL-FAJER TV 2 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/262162"},{"name":"AL-FAJER TV 2 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/262163"},{"name":"AL-FAJER TV 3 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/262159"},{"name":"AL-FAJER TV 3 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/262160"},{"name":"AL-FAJER TV 4 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/262156"},{"name":"AL-FAJER TV 4 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/262157"},{"name":"AL-FAJER TV 5 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/262153"},{"name":"AL-FAJER TV 5 FHD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/262154"},{"name":"WWE FEED MARVEL  SD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/87164"},{"name":"WWE FEED MARVEL  HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/102808"},{"name":"|US| WWE","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/87170"},{"name":"we can  wwe","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/395572"},{"name":"IMDB  WWE 1","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/395571"},{"name":"IMDB   WWE","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/395570"},{"name":"Majestic  WWE","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/395569"},{"name":"WATCH  WWE","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/395568"},{"name":"Usa | Sport: UFC 1 HD","logo":"","url":"http://uv0wwz.m4rv3l.online:80/86321000461/6731909777/266083"}]/*[/INJECT_CHANNELS]*/;
+            if (injected && injected.length > 0) {
+                channels = injected;
+                saveData();
             }
         }
 
-        // دالة فك شفرة ملفات الـ M3U
-        function parseM3UString(content) {
-            const lines = content.split('\n');
-            let parsedChannels = [];
-            let currentChannel = {};
-
-            for (let i = 0; i < lines.length; i++) {
-                const line = lines[i].trim();
-                if (line.startsWith('#EXTINF:')) {
-                    let nameMatch = line.match(/,(.+)$/);
-                    let logoMatch = line.match(/tvg-logo="([^"]+)"/);
-                    currentChannel.name = nameMatch ? nameMatch[1].trim() : 'قناة بدون اسم';
-                    currentChannel.logo = logoMatch ? logoMatch[1] : '';
-                } else if (line !== '' && !line.startsWith('#')) {
-                    currentChannel.url = line;
-                    parsedChannels.push(currentChannel);
-                    currentChannel = {}; 
-                }
-            }
-            return parsedChannels;
-        }
-
-        // دالة رسم القنوات في القائمة
-        function renderPlaylist() {
-            playlistContainer.innerHTML = '';
-            channelCountText.innerText = channels.length + " قناة";
-            
-            if (channels.length === 0) {
-                playlistContainer.innerHTML = '<li style="padding: 20px; text-align: center; color: #777;">القائمة فاضية! ضيف قنوات أو استورد ملف M3U.</li>';
-                return;
-            }
-
-            channels.forEach((channel, index) => {
-                const li = document.createElement('li');
-                li.className = 'channel-item';
-                const logoSrc = channel.logo ? channel.logo : 'https://via.placeholder.com/40/111/fff?text=TV';
-
-                li.innerHTML = `
-                    <div class="channel-info" onclick="playChannel('${channel.url}', '${channel.name}', this)">
-                        <img src="${logoSrc}" class="channel-logo" alt="logo" onerror="this.src='https://via.placeholder.com/40/111/fff?text=TV'">
-                        <span class="channel-name">${channel.name}</span>
-                    </div>
-                    <div class="channel-actions">
-                        <button class="btn-delete" title="مسح من القايمة" onclick="deleteChannel(${index}, event)">🗑️</button>
-                    </div>
-                `;
-                playlistContainer.appendChild(li);
+        function initPlayer() {
+            const videoElement = document.getElementById('video-player');
+            plyrInstance = new Plyr(videoElement, {
+                controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'fullscreen'],
+                ratio: '16:9'
             });
         }
 
-        // دالة التشغيل
-        function playChannel(url, name, element) {
-            activeStreamUrl = url;
-            activeStreamName = name;
-            activeElementRef = element;
+        initPlayer();
 
-            currentChannelText.innerText = "● جاري تشغيل: " + name;
-            
-            document.querySelectorAll('.channel-item').forEach(item => item.classList.remove('active'));
-            if (element) {
-                element.parentElement.classList.add('active');
+        function saveData() {
+            localStorage.setItem('iptv_saved_channels', JSON.stringify(channels));
+        }
+
+        function parseM3U(content) {
+            const lines = content.split('\n');
+            let result = [];
+            let temp = {};
+
+            for (let line of lines) {
+                line = line.trim();
+                if (line.startsWith('#EXTINF:')) {
+                    let nameMatch = line.match(/,(.+)$/);
+                    let logoMatch = line.match(/tvg-logo="([^"]+)"/);
+                    temp.name = nameMatch ? nameMatch[1].trim() : 'قناة غير معروفة';
+                    temp.logo = logoMatch ? logoMatch[1] : '';
+                } else if (line && !line.startsWith('#')) {
+                    temp.url = line;
+                    result.push(temp);
+                    temp = {}; 
+                }
             }
+            return result;
+        }
+
+        function render() {
+            domList.innerHTML = '';
+            domCount.innerText = channels.length;
+            
+            if (channels.length === 0) {
+                domList.innerHTML = '<li style="padding: 30px; text-align: center; color: var(--text-muted);">القائمة فارغة، أضف قنوات الآن.</li>';
+                return;
+            }
+
+            channels.forEach((ch, idx) => {
+                const li = document.createElement('li');
+                li.className = 'channel-item';
+                const defaultImg = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjOGI5ZWIwIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHJlY3QgeD0iMiIgeT0iNyIgd2lkdGg9IjIwIiBoZWlnaHQ9IjE1IiByeD0iMiIgcnk9IjIiPjwvcmVjdD48cG9seWxpbmUgcG9pbnRzPSIxNyAyIDEyIDcgNyAyIj48L3BvbHlsaW5lPjwvc3ZnPg==';
+                const img = ch.logo || defaultImg;
+
+                li.innerHTML = `
+                    <div class="channel-info" onclick="play('${ch.url}', '${ch.name.replace(/'/g, "\\'")}', this)">
+                        <img src="${img}" class="channel-thumb" onerror="this.src='${defaultImg}'">
+                        <span class="channel-name">${ch.name}</span>
+                    </div>
+                    <button class="btn-delete" onclick="removeCh(${idx}, event)">×</button>
+                `;
+                domList.appendChild(li);
+            });
+        }
+
+        function play(url, name, element) {
+            currentUrl = url;
+            currentName = name;
+            domTitle.innerText = name;
+            
+            document.querySelectorAll('.channel-item').forEach(i => i.classList.remove('playing'));
+            if (element) element.parentElement.classList.add('playing');
 
             let streamUrl = url;
             if (streamUrl.includes('.ts')) {
@@ -258,174 +303,159 @@
                 streamUrl += ".m3u8";
             }
 
-            if (hls) { hls.destroy(); }
+            const videoElement = document.getElementById('video-player');
+
+            if (hlsInstance) {
+                hlsInstance.destroy();
+            }
 
             if (Hls.isSupported()) {
-                hls = new Hls({
+                hlsInstance = new Hls({
                     enableWorker: true,
                     lowLatencyMode: true,
                     manifestLoadingTimeOut: 10000,
                     manifestLoadingMaxRetry: 3,
                 });
                 
-                hls.loadSource(streamUrl);
-                hls.attachMedia(videoElement);
+                hlsInstance.loadSource(streamUrl);
+                hlsInstance.attachMedia(videoElement);
                 
-                hls.on(Hls.Events.MANIFEST_PARSED, function() {
-                    videoElement.play().catch(e => console.log("تحذير التشغيل:", e));
+                hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
+                    const playPromise = videoElement.play();
+                    if (playPromise !== undefined) {
+                        playPromise.catch(e => console.log("تنبيه التشغيل:", e));
+                    }
                 });
 
-                hls.on(Hls.Events.ERROR, function (event, data) {
+                hlsInstance.on(Hls.Events.ERROR, function (event, data) {
                     if (data.fatal) {
                         switch (data.type) {
                             case Hls.ErrorTypes.NETWORK_ERROR:
-                                hls.startLoad();
+                                hlsInstance.startLoad();
                                 break;
                             case Hls.ErrorTypes.MEDIA_ERROR:
-                                hls.recoverMediaError();
+                                hlsInstance.recoverMediaError();
                                 break;
                             default:
-                                hls.destroy();
-                                currentChannelText.innerText = "❌ البث لا يعمل (تأكد من الرابط أو سياسة السيرفر)";
+                                hlsInstance.destroy();
+                                domTitle.innerText = "❌ البث متوقف حالياً";
                                 break;
                         }
                     }
                 });
             } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
                 videoElement.src = streamUrl;
-                videoElement.play().catch(e => console.log("تحذير التشغيل:", e));
+                videoElement.play();
             }
         }
 
-        function refreshPlayer() {
-            if (activeStreamUrl && activeStreamName) {
-                playChannel(activeStreamUrl, activeStreamName, activeElementRef);
-            } else {
-                alert("مفيش قناة شغالة عشان تعملها ريفريش!");
+        function reloadStream() {
+            if (currentUrl) {
+                const playingEl = document.querySelector('.channel-item.playing .channel-info');
+                play(currentUrl, currentName, playingEl);
             }
         }
 
-        function closePlayer() {
-            if (hls) { hls.destroy(); }
+        function stopStream() {
+            if (hlsInstance) hlsInstance.destroy();
+            const videoElement = document.getElementById('video-player');
             videoElement.pause();
             videoElement.removeAttribute('src');
             videoElement.load();
-            currentChannelText.innerText = "اختر قناة للتشغيل...";
-            document.querySelectorAll('.channel-item').forEach(item => item.classList.remove('active'));
-            activeStreamUrl = '';
-            activeStreamName = '';
-            activeElementRef = null;
+            domTitle.innerText = "لم يتم اختيار قناة";
+            document.querySelectorAll('.channel-item').forEach(i => i.classList.remove('playing'));
+            currentUrl = '';
         }
 
-        function addSingleChannel() {
-            const name = inputName.value.trim();
-            const url = inputUrl.value.trim();
-            const logo = inputLogo.value.trim();
+        function addChannel() {
+            const name = iName.value.trim();
+            const url = iUrl.value.trim();
+            const logo = iLogo.value.trim();
 
             if (!name || !url) {
-                alert("لازم تكتب اسم القناة واللينك بتاعها على الأقل!");
+                alert("يجب إدخال الاسم والرابط!");
                 return;
             }
 
-            channels.unshift({ name, url, logo }); 
-            saveChannelsToStorage();
-            renderPlaylist();
+            channels.unshift({ name, url, logo });
+            saveData();
+            render();
 
-            inputName.value = '';
-            inputUrl.value = '';
-            inputLogo.value = '';
+            iName.value = ''; iUrl.value = ''; iLogo.value = '';
         }
 
-        function handleFileUpload(event) {
-            const file = event.target.files[0];
+        function importM3U(e) {
+            const file = e.target.files[0];
             if (!file) return;
             const reader = new FileReader();
-            reader.onload = function(e) {
-                const content = e.target.result;
-                const newChannels = parseM3UString(content);
-                channels = newChannels.concat(channels);
-                saveChannelsToStorage();
-                renderPlaylist();
-                alert(`تم إضافة وحفظ ${newChannels.length} قناة بنجاح! 🎉`);
-                event.target.value = ''; 
+            reader.onload = function(evt) {
+                const newChs = parseM3U(evt.target.result);
+                channels = newChs.concat(channels);
+                saveData();
+                render();
+                alert(`تم استيراد ${newChs.length} قناة بنجاح!`);
+                e.target.value = ''; 
             };
             reader.readAsText(file);
         }
 
-        function deleteChannel(index, event) {
-            event.stopPropagation(); 
-            channels.splice(index, 1);
-            saveChannelsToStorage();
-            renderPlaylist();
+        function removeCh(idx, e) {
+            e.stopPropagation();
+            channels.splice(idx, 1);
+            saveData();
+            render();
         }
 
-        function deleteAllChannels() {
-            if (channels.length === 0) {
-                alert("القائمة فاضية بالفعل!");
-                return;
-            }
-            if (confirm("متأكد إنك عايز تمسح كل القنوات المحفوظة؟")) {
+        function clearAll() {
+            if (channels.length === 0) return;
+            if (confirm("هل أنت متأكد من مسح جميع القنوات؟")) {
                 channels = [];
-                saveChannelsToStorage();
-                renderPlaylist();
-                closePlayer(); 
+                saveData();
+                render();
+                stopStream();
             }
         }
 
-        // =====================================
-        // 🔥 دالة تصدير المشغل كملف HTML مستقل
-        // =====================================
-        function exportToHTML() {
+        function exportHTML() {
             if (channels.length === 0) {
-                alert("مفيش قنوات عشان تحفظها!");
+                alert("لا توجد قنوات لتصديرها!");
                 return;
             }
 
-            // بناخد نسخة من كود الصفحة بالكامل
-            const clonedDoc = document.documentElement.cloneNode(true);
+            const docClone = document.documentElement.cloneNode(true);
 
-            // بننضف النسخة دي عشان تفتح عند صاحبك كأنها جديدة
-            clonedDoc.querySelector('#playlist').innerHTML = '';
-            clonedDoc.querySelector('#current-channel-name').innerText = 'اختر قناة للتشغيل...';
-            clonedDoc.querySelector('#channel-count').innerText = '0 قناة';
-            
-            const video = clonedDoc.querySelector('#video');
-            video.removeAttribute('src');
-            
-            // بنفضي الخانات بتاعة الإضافة
-            ['#input-name', '#input-url', '#input-logo'].forEach(id => {
-                const el = clonedDoc.querySelector(id);
+            docClone.querySelector('#ch-list').innerHTML = '';
+            docClone.querySelector('#np-title span').innerText = 'لم يتم اختيار قناة';
+            docClone.querySelector('#ch-count').innerText = '0';
+            ['#i-name', '#i-url', '#i-logo'].forEach(id => {
+                const el = docClone.querySelector(id);
                 if(el) el.removeAttribute('value');
             });
 
-            let htmlStr = clonedDoc.outerHTML;
+            const wrapper = docClone.querySelector('#player-wrapper');
+            wrapper.innerHTML = '<video id="video-player" controls playsinline preload="auto"></video>';
 
-            // بنحول مصفوفة القنوات لنص، وبنحقنها جوه الكود مكان العلامة السحرية
-            const channelsJson = JSON.stringify(channels);
-            htmlStr = htmlStr.replace(/\/\*\[INJECT_CHANNELS\]\*\/[\s\S]*?\/\*\[\/INJECT_CHANNELS\]\*\//, `/*[INJECT_CHANNELS]*/${channelsJson}/*[/INJECT_CHANNELS]*/`);
-
-            const fullHtml = `<!DOCTYPE html>\n<html lang="ar" dir="rtl">\n${htmlStr}\n</html>`;
-
-            // بنعمل الملف وبنزله
-            const blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
+            let htmlString = docClone.outerHTML;
+            const jsonStr = JSON.stringify(channels);
             
+            htmlString = htmlString.replace(/\/\*\[INJECT_CHANNELS\]\*\/[\s\S]*?\/\*\[\/INJECT_CHANNELS\]\*\//, `/*[INJECT_CHANNELS]*/${jsonStr}/*[/INJECT_CHANNELS]*/`);
+
+            const finalHtml = `<!DOCTYPE html>\n<html lang="ar" dir="rtl">\n${htmlString}\n</html>`;
+
+            const blob = new Blob([finalHtml], { type: 'text/html;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = 'X-Stream_Player_With_Channels.html';
+            a.download = 'Nova_Stream_Player.html';
             document.body.appendChild(a);
             a.click();
-            
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
         }
 
-        // تشغيل الرسم أول ما الصفحة تفتح
-        renderPlaylist();
+        render();
 
     </script>
-
-
 
 </body></html>
 </html>
