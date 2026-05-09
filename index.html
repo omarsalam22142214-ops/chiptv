@@ -86,13 +86,15 @@
         .btn-clear { background: var(--danger); }
         .btn-clear:hover { background: #e03e4d; }
         
-        /* أزرار الإضافات (رابط، اكستريم، ستالكر) */
+        /* أزرار الإضافات */
         .btn-link { background: #3498db; color: #fff; }
         .btn-link:hover { background: #2980b9; }
         .btn-xtream { background: #9b59b6; color: #fff; }
         .btn-xtream:hover { background: #8e44ad; }
         .btn-stalker { background: #e67e22; color: #fff; }
         .btn-stalker:hover { background: #d35400; }
+        .btn-quick { background: #f39c12; color: #fff; }
+        .btn-quick:hover { background: #e67e22; }
         
         #xtream-panel, #link-panel, #stalker-panel {
             display: none; 
@@ -102,6 +104,8 @@
             border-top-left-radius: 0;
             border-top-right-radius: 0;
             animation: fadeIn 0.3s ease;
+            flex-direction: column;
+            align-items: stretch;
         }
 
         @keyframes fadeIn {
@@ -235,13 +239,17 @@
             </div>
         </div>
 
-        <!-- لوحة ادخال بيانات الاكستريم -->
+        <!-- لوحة ادخال بيانات الاكستريم مع الاستخراج السريع -->
         <div class="controls-panel" id="xtream-panel" style="display: none;">
+            <div class="input-group" style="width: 100%; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 15px; margin-bottom: 5px;">
+                <input type="text" id="x-quick-link" placeholder="أو الصق رابط (API / M3U) هنا لاستخراج البيانات تلقائياً..." data-ddg-inputtype="unknown">
+                <button class="btn btn-quick" onclick="extractAndFetchXtream()">⚡ استخراج وجلب سريع</button>
+            </div>
             <div class="input-group">
                 <input type="text" id="x-host" placeholder="الهوست (مثال: http://domain.com)" data-ddg-inputtype="unknown">
-                <input type="text" id="x-port" placeholder="البورت (مثال: 8080)" data-ddg-inputtype="unknown">
+                <input type="text" id="x-port" placeholder="البورت (اختياري)" data-ddg-inputtype="unknown">
                 <input type="text" id="x-user" placeholder="اليوزر (Username)" data-ddg-inputtype="credentials.username">
-                <input type="password" id="x-pass" placeholder="الباسورد (Password)" data-ddg-inputtype="credentials.password.new">
+                <input type="text" id="x-pass" placeholder="الباسورد (Password)" data-ddg-inputtype="credentials.password.new">
                 <button class="btn btn-add" id="btn-fetch-xtream" onclick="fetchXtream()">📥 جلب القنوات</button>
             </div>
         </div>
@@ -559,15 +567,17 @@
 
             // --- محاولة اكتشاف وتحويل رابط الاكستريم تلقائياً ---
             try {
-                const urlObj = new URL(urlInput);
+                let testUrl = urlInput;
+                if (!testUrl.startsWith('http')) testUrl = 'http://' + testUrl;
+                
+                const urlObj = new URL(testUrl);
                 const user = urlObj.searchParams.get('username');
                 const pass = urlObj.searchParams.get('password');
                 
-                // لو الرابط فيه يوزر وباسورد وكلمة get.php، ده بنسبة 99% اكستريم
-                if (user && pass && urlInput.includes('get.php')) {
-                    console.log("تم اكتشاف رابط اكستريم، جاري التحويل التلقائي واستخراج الـ API...");
+                if (user && pass && (testUrl.includes('get.php') || testUrl.includes('player_api.php'))) {
+                    console.log("تم اكتشاف رابط اكستريم، جاري التحويل التلقائي...");
                     const baseUrl = urlObj.origin; 
-                    const apiUrl = `${baseUrl}/player_api.php?username=${user}&password=${pass}&action=get_live_streams`;
+                    const apiUrl = `${baseUrl}/player_api.php?username=${encodeURIComponent(user)}&password=${encodeURIComponent(pass)}&action=get_live_streams`;
                     
                     let res;
                     try {
@@ -580,7 +590,7 @@
                     if (data && data.length > 0) {
                         const newChannels = data.map(stream => ({
                             name: stream.name || 'قناة غير معروفة',
-                            url: `${baseUrl}/live/${user}/${pass}/${stream.stream_id}.m3u8`,
+                            url: `${baseUrl}/live/${encodeURIComponent(user)}/${encodeURIComponent(pass)}/${stream.stream_id}.m3u8`,
                             logo: stream.stream_icon || ''
                         }));
                         channels = newChannels.concat(channels);
@@ -651,8 +661,11 @@
                 console.error("Fetch link error:", error);
                 alert("عذراً، السيرفر حمايته بتمنع سحب القنوات مباشرة (CORS).\n\nهنبدأ نحمل الملف تلقائي دلوقتي على جهازك، ولما ينزل استخدم زرار (استيراد 📁) عشان ترفعه.");
                 
+                let safeUrl = urlInput;
+                if (!safeUrl.startsWith('http')) safeUrl = 'http://' + safeUrl;
+                
                 const a = document.createElement('a');
-                a.href = urlInput;
+                a.href = safeUrl;
                 a.target = '_blank';
                 a.download = ''; 
                 document.body.appendChild(a);
@@ -667,10 +680,55 @@
             }
         }
 
-        /* دوال الأكستريم */
+        /* دوال الأكستريم والاستخراج السريع */
         function toggleXtreamPanel() {
             const panel = document.getElementById('xtream-panel');
             panel.style.display = panel.style.display === 'none' ? 'flex' : 'none';
+        }
+        
+        // دالة الاستخراج الذكي الجديدة
+        function extractAndFetchXtream() {
+            let quickLink = document.getElementById('x-quick-link').value.trim();
+            if (!quickLink) {
+                alert("الرجاء لصق الرابط أولاً في خانة الاستخراج السريع!");
+                return;
+            }
+
+            // ضمان وجود بروتوكول عشان التحليل يشتغل صح
+            if (!quickLink.startsWith('http://') && !quickLink.startsWith('https://')) {
+                quickLink = 'http://' + quickLink;
+            }
+
+            try {
+                const urlObj = new URL(quickLink);
+                
+                // استخراج الهوست والبورت
+                const host = urlObj.protocol + '//' + urlObj.hostname;
+                const port = urlObj.port || ''; 
+                
+                // استخراج اليوزر والباسورد من مسار الـ URL
+                const user = urlObj.searchParams.get('username');
+                const pass = urlObj.searchParams.get('password');
+
+                if (user && pass) {
+                    // تعبئة الخانات تلقائياً
+                    document.getElementById('x-host').value = host;
+                    document.getElementById('x-port').value = port;
+                    document.getElementById('x-user').value = user;
+                    document.getElementById('x-pass').value = pass;
+
+                    // مسح خانة الرابط السريع
+                    document.getElementById('x-quick-link').value = '';
+
+                    // تشغيل دالة الجلب تلقائياً
+                    fetchXtream();
+                } else {
+                    alert("مقدرتش ألاقي Username و Password في الرابط! اتأكد إنك ناسخ الرابط بالكامل بشكل صحيح.");
+                }
+            } catch (e) {
+                alert("حصل خطأ في قراءة الرابط! اتأكد إن الرابط سليم.");
+                console.error(e);
+            }
         }
 
         async function fetchXtream() {
@@ -690,21 +748,28 @@
             if (!baseUrl.startsWith('http')) baseUrl = 'http://' + baseUrl;
             if (port) baseUrl = `${baseUrl}:${port}`;
 
-            const apiUrl = `${baseUrl}/player_api.php?username=${user}&password=${pass}&action=get_live_streams`;
+            // استخدام encodeURIComponent عشان لو اليوزر فيه رموز زي نقطتين الماك أدرس
+            const apiUrl = `${baseUrl}/player_api.php?username=${encodeURIComponent(user)}&password=${encodeURIComponent(pass)}&action=get_live_streams`;
 
             btn.innerText = "⏳ جاري التحميل...";
             btn.disabled = true;
 
             try {
-                const response = await fetch(apiUrl);
-                const data = await response.json();
+                let res;
+                try {
+                    res = await fetch(apiUrl);
+                } catch(err) {
+                    res = await fetch('https://corsproxy.io/?' + encodeURIComponent(apiUrl));
+                }
+                
+                const data = await res.json();
 
                 if (!data || data.length === 0) {
                     alert("مفيش قنوات أو البيانات غلط!");
                 } else {
                     const newChannels = data.map(stream => ({
                         name: stream.name || 'قناة غير معروفة',
-                        url: `${baseUrl}/live/${user}/${pass}/${stream.stream_id}.m3u8`,
+                        url: `${baseUrl}/live/${encodeURIComponent(user)}/${encodeURIComponent(pass)}/${stream.stream_id}.m3u8`,
                         logo: stream.stream_icon || ''
                     }));
 
@@ -878,7 +943,8 @@
             docClone.querySelector('#np-title span').innerText = 'لم يتم اختيار قناة';
             docClone.querySelector('#ch-count').innerText = '0';
             
-            ['#i-name', '#i-url', '#i-logo', '#i-search', '#x-host', '#x-port', '#x-user', '#x-pass', '#l-url', '#s-url', '#s-mac'].forEach(id => {
+            // تصفير كل الخانات عشان تنزل فاضية
+            ['#i-name', '#i-url', '#i-logo', '#i-search', '#x-host', '#x-port', '#x-user', '#x-pass', '#l-url', '#s-url', '#s-mac', '#x-quick-link'].forEach(id => {
                 const el = docClone.querySelector(id);
                 if(el) el.removeAttribute('value');
             });
