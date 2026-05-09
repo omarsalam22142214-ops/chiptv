@@ -173,8 +173,13 @@
         .channel-thumb { width: 45px; height: 45px; border-radius: 8px; margin-left: 12px; object-fit: cover; background: #000; }
         .channel-name { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-main); }
 
+        .channel-actions { display: flex; gap: 5px; align-items: center; }
+        
         .btn-delete { background: none; border: none; color: var(--text-muted); font-size: 18px; cursor: pointer; transition: 0.3s; padding: 5px; }
         .btn-delete:hover { color: var(--danger); transform: scale(1.1); }
+        
+        .btn-copy { background: none; border: none; color: var(--text-muted); font-size: 16px; cursor: pointer; transition: 0.3s; padding: 5px; }
+        .btn-copy:hover { color: var(--success); transform: scale(1.1); }
 
         /* منطقة الفيديو */
         .video-container {
@@ -249,7 +254,7 @@
                 <input type="text" id="x-host" placeholder="الهوست (مثال: http://domain.com)" data-ddg-inputtype="unknown">
                 <input type="text" id="x-port" placeholder="البورت (اختياري)" data-ddg-inputtype="unknown">
                 <input type="text" id="x-user" placeholder="اليوزر (Username)" data-ddg-inputtype="credentials.username">
-                <input type="text" id="x-pass" placeholder="الباسورد (Password)" data-ddg-inputtype="credentials.password.new">
+                <input type="password" id="x-pass" placeholder="الباسورد (Password)" data-ddg-inputtype="credentials.password.new">
                 <button class="btn btn-add" id="btn-fetch-xtream" onclick="fetchXtream()">📥 جلب القنوات</button>
             </div>
         </div>
@@ -395,6 +400,20 @@
             });
         }
 
+        // دالة نسخ الرابط لـ VLC
+        function copyLink(url, e) {
+            e.stopPropagation();
+            navigator.clipboard.writeText(url).then(() => {
+                const btn = e.target;
+                const originalText = btn.innerText;
+                btn.innerText = '✅';
+                setTimeout(() => { btn.innerText = originalText; }, 1500);
+            }).catch(err => {
+                console.error('Failed to copy: ', err);
+                alert("مقدرناش ننسخ الرابط تلقائي، ده الرابط: \n" + url);
+            });
+        }
+
         function render() {
             domList.innerHTML = '';
             domCount.innerText = channels.length;
@@ -418,7 +437,10 @@
                         <img src="${img}" class="channel-thumb" onerror="this.src='${defaultImg}'">
                         <span class="channel-name">${ch.name}</span>
                     </div>
-                    <button class="btn-delete" onclick="removeCh(${idx}, event)">×</button>
+                    <div class="channel-actions">
+                        <button class="btn-copy" onclick="copyLink('${ch.url}', event)" title="نسخ رابط القناة لـ VLC">🔗</button>
+                        <button class="btn-delete" onclick="removeCh(${idx}, event)" title="حذف">×</button>
+                    </div>
                 `;
                 domList.appendChild(li);
             });
