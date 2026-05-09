@@ -1,8 +1,6 @@
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
 <html lang="ar" dir="rtl"><head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=1300">
     <title>Nova Stream - Advanced Player</title>
     
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
@@ -203,6 +201,7 @@
         .player-wrapper {
             flex: 1; border-radius: 12px; overflow: hidden; background: #000;
             display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            position: relative;
         }
 
         .plyr { width: 100%; height: 100%; --plyr-color-main: var(--accent); }
@@ -213,6 +212,13 @@
             .controls-panel { flex-direction: column; align-items: stretch; }
             .action-btns { justify-content: space-between; }
         }
+
+        /* تنسيقات وضع السينما (إخفاء القوائم) */
+        body.cinema-mode .controls-panel { display: none !important; }
+        body.cinema-mode .sidebar { display: none !important; }
+        body.cinema-mode .content-area { height: calc(100vh - 40px); }
+        body.cinema-mode .video-container { height: 100%; }
+
     </style>
 <style>:is([id*='google_ads_iframe'],[id*='taboola-'],.taboolaHeight,.taboola-placeholder,#top-ad,#credential_picker_container,#credentials-picker-container,#credential_picker_iframe,[id*='google-one-tap-iframe'],#google-one-tap-popup-container,.google-one-tap__module,.google-one-tap-modal-div,#amp_floatingAdDiv,#ez-content-blocker-container) {display:none!important;min-height:0!important;height:0!important;}</style></head>
 <body>
@@ -227,7 +233,13 @@
                 <button class="btn btn-add" onclick="addChannel()">➕ إضافة</button>
             </div>
             
-            <div class="action-btns">
+            <div class="input-group" style="flex-basis: 100%; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 15px; margin-top: 5px;">
+                <input type="text" id="i-direct-link" placeholder="رابط بث (فيديو) أو موقع للتشغيل المباشر داخل المشغل...">
+                <button class="btn btn-add" onclick="playDirectLink()">▶️ تشغيل كفيديو</button>
+                <button class="btn btn-link" onclick="playWebsite()">🌐 تشغيل كموقع</button>
+            </div>
+            
+            <div class="action-btns" style="flex-basis: 100%;">
                 <button class="btn btn-scrape" onclick="scrapeMatch()">🕸️ سحب الماتش</button>
                 <button class="btn btn-stalker" onclick="toggleStalkerPanel()">🎮 حساب ستالكر</button>
                 <button class="btn btn-link" onclick="toggleLinkPanel()">🌐 استيراد من رابط</button>
@@ -282,7 +294,7 @@
                     <input type="text" id="i-search" placeholder="🔍 إبحث عن قناة..." oninput="filterChannels()" data-ddg-inputtype="unknown">
                 </div>
 
-                <ul class="channel-list" id="ch-list"></ul>
+                <ul class="channel-list" id="ch-list"><li style="padding: 30px; text-align: center; color: var(--text-muted);">القائمة فارغة، أضف قنوات الآن.</li></ul>
             </div>
 
             <div class="video-container">
@@ -291,12 +303,17 @@
                         📺 <span>لم يتم اختيار قناة</span>
                     </div>
                     <div class="player-actions">
+                        <button class="btn-icon" onclick="toggleCinemaMode()" title="إخفاء القوائم (وضع السينما)">🎦</button>
                         <button class="btn-icon" onclick="reloadStream()" title="تحديث البث">🔄</button>
                         <button class="btn-icon" onclick="stopStream()" title="إيقاف">🛑</button>
                     </div>
                 </div>
 
-                <div class="player-wrapper" id="player-wrapper"><video id="video-player" controls="" playsinline="" preload="auto"></video></div>
+                <!-- تم تنظيف الأكواد هنا لحل مشكلة تعليق شريط التحكم -->
+                <div class="player-wrapper" id="player-wrapper">
+                    <iframe id="website-player" allowfullscreen style="display:none; width:100%; height:100%; border:none; background:#fff; z-index: 10;"></iframe>
+                    <video id="video-player" playsinline preload="auto"></video>
+                </div>
             </div>
         </div>
     </div>
@@ -313,6 +330,7 @@
         let hlsInstance;
         let currentUrl = '';
         let currentName = '';
+        let isCinemaMode = false;
 
         let channels = [];
 
@@ -339,6 +357,12 @@
 
         initPlayer();
 
+        // دالة وضع السينما
+        function toggleCinemaMode() {
+            isCinemaMode = !isCinemaMode;
+            document.body.classList.toggle('cinema-mode', isCinemaMode);
+        }
+
         // دالة سحب البث من صفحات النت عبر سيرفر البايثون
         async function scrapeMatch() {
             const matchUrl = prompt("حط رابط صفحة الماتش (زي يلا شوت أو يلا كورة):");
@@ -347,19 +371,16 @@
             domTitle.innerText = "⏳ جاري استخراج البث من الموقع...";
             
             try {
-                // بنكلم سيرفر البايثون بتاعنا
                 const response = await fetch(`http://127.0.0.1:5000/get_stream?url=${encodeURIComponent(matchUrl)}`);
                 const data = await response.json();
 
                 if (data.success && data.stream_url) {
                     alert("تم سحب رابط البث بنجاح! بيتم التشغيل دلوقتي...");
                     
-                    // بنضيف القناة للقائمة وبنشغلها
                     const channelName = "ماتش مباشر (مسحوب)";
                     channels.unshift({ name: channelName, url: data.stream_url, logo: '' });
-                    render(); // تحديث القائمة
+                    render();
                     
-                    // تشغيل مباشر
                     play(data.stream_url, channelName, null);
                 } else {
                     alert("فشل الاستخراج: " + data.error);
@@ -372,7 +393,6 @@
             }
         }
 
-        // دالة تحليل ملفات M3U
         function parseM3U(content) {
             const lines = content.split('\n');
             let result = [];
@@ -394,7 +414,6 @@
             return result;
         }
 
-        // دالة تحليل ملفات XSPF
         function parseXSPF(content) {
             let result = [];
             try {
@@ -436,7 +455,6 @@
             });
         }
 
-        // دالة نسخ الرابط لـ VLC
         function copyLink(url, e) {
             e.stopPropagation();
             navigator.clipboard.writeText(url).then(() => {
@@ -454,7 +472,6 @@
             domList.innerHTML = '';
             domCount.innerText = channels.length;
             
-            // حفظ القنوات في المتصفح تلقائياً
             localStorage.setItem('nova_saved_channels', JSON.stringify(channels));
             
             if (channels.length === 0) {
@@ -485,6 +502,11 @@
         }
 
         async function play(url, name, element) {
+            const iframe = document.getElementById('website-player');
+            if(iframe) { iframe.style.display = 'none'; iframe.src = ''; }
+            const plyrContainer = document.querySelector('.plyr');
+            if(plyrContainer) plyrContainer.style.display = 'block';
+
             currentUrl = url;
             currentName = name;
             domTitle.innerText = "⏳ جاري الاتصال بالبث...";
@@ -494,7 +516,6 @@
 
             let streamUrl = url;
 
-            // لو القناة ستالكر ومحتاجة توليد رابط (Create Link)
             if (streamUrl.includes('action=create_link')) {
                 try {
                     let res;
@@ -581,9 +602,17 @@
         function stopStream() {
             if (hlsInstance) hlsInstance.destroy();
             const videoElement = document.getElementById('video-player');
-            videoElement.pause();
-            videoElement.removeAttribute('src');
-            videoElement.load();
+            if (videoElement) {
+                videoElement.pause();
+                videoElement.removeAttribute('src');
+                videoElement.load();
+            }
+            
+            const iframe = document.getElementById('website-player');
+            if(iframe) { iframe.style.display = 'none'; iframe.src = ''; }
+            const plyrContainer = document.querySelector('.plyr');
+            if(plyrContainer) plyrContainer.style.display = 'block';
+
             domTitle.innerText = "لم يتم اختيار قناة";
             document.querySelectorAll('.channel-item').forEach(i => i.classList.remove('playing'));
             currentUrl = '';
@@ -605,7 +634,6 @@
             iName.value = ''; iUrl.value = ''; iLogo.value = '';
         }
 
-        /* دوال الاستيراد من رابط */
         function toggleLinkPanel() {
             const panel = document.getElementById('link-panel');
             panel.style.display = panel.style.display === 'none' ? 'flex' : 'none';
@@ -623,7 +651,6 @@
             btn.innerText = "⏳ جاري التحميل...";
             btn.disabled = true;
 
-            // --- محاولة اكتشاف وتحويل رابط الاكستريم تلقائياً ---
             try {
                 let testUrl = urlInput;
                 if (!testUrl.startsWith('http')) testUrl = 'http://' + testUrl;
@@ -664,9 +691,7 @@
             } catch (e) {
                 console.log("ليس رابط اكستريم أو فشل التحويل التلقائي، سيتم المحاولة كملف M3U/XSPF عادي...");
             }
-            // ---------------------------------------------------
 
-            // المحاولة كملف M3U أو XSPF عادي
             try {
                 let response;
                 try {
@@ -680,7 +705,6 @@
                 const content = await response.text();
                 
                 let newChs = [];
-                // تحديد نوع الملف بناءً على المحتوى أو الامتداد
                 if (content.includes('<playlist') || urlInput.toLowerCase().endsWith('.xspf')) {
                     newChs = parseXSPF(content);
                 } else {
@@ -738,13 +762,11 @@
             }
         }
 
-        /* دوال الأكستريم والاستخراج السريع */
         function toggleXtreamPanel() {
             const panel = document.getElementById('xtream-panel');
             panel.style.display = panel.style.display === 'none' ? 'flex' : 'none';
         }
         
-        // دالة الاستخراج الذكي الجديدة
         function extractAndFetchXtream() {
             let quickLink = document.getElementById('x-quick-link').value.trim();
             if (!quickLink) {
@@ -752,7 +774,6 @@
                 return;
             }
 
-            // ضمان وجود بروتوكول عشان التحليل يشتغل صح
             if (!quickLink.startsWith('http://') && !quickLink.startsWith('https://')) {
                 quickLink = 'http://' + quickLink;
             }
@@ -760,25 +781,20 @@
             try {
                 const urlObj = new URL(quickLink);
                 
-                // استخراج الهوست والبورت
                 const host = urlObj.protocol + '//' + urlObj.hostname;
                 const port = urlObj.port || ''; 
                 
-                // استخراج اليوزر والباسورد من مسار الـ URL
                 const user = urlObj.searchParams.get('username');
                 const pass = urlObj.searchParams.get('password');
 
                 if (user && pass) {
-                    // تعبئة الخانات تلقائياً
                     document.getElementById('x-host').value = host;
                     document.getElementById('x-port').value = port;
                     document.getElementById('x-user').value = user;
                     document.getElementById('x-pass').value = pass;
 
-                    // مسح خانة الرابط السريع
                     document.getElementById('x-quick-link').value = '';
 
-                    // تشغيل دالة الجلب تلقائياً
                     fetchXtream();
                 } else {
                     alert("مقدرتش ألاقي Username و Password في الرابط! اتأكد إنك ناسخ الرابط بالكامل بشكل صحيح.");
@@ -806,7 +822,6 @@
             if (!baseUrl.startsWith('http')) baseUrl = 'http://' + baseUrl;
             if (port) baseUrl = `${baseUrl}:${port}`;
 
-            // استخدام encodeURIComponent عشان لو اليوزر فيه رموز زي نقطتين الماك أدرس
             const apiUrl = `${baseUrl}/player_api.php?username=${encodeURIComponent(user)}&password=${encodeURIComponent(pass)}&action=get_live_streams`;
 
             btn.innerText = "⏳ جاري التحميل...";
@@ -845,7 +860,6 @@
             }
         }
 
-        /* دوال ستالكر */
         function toggleStalkerPanel() {
             const panel = document.getElementById('stalker-panel');
             panel.style.display = panel.style.display === 'none' ? 'flex' : 'none';
@@ -936,7 +950,6 @@
                         const content = evt.target.result;
                         let newChs = [];
                         
-                        // تحديد نوع الملف بناءً على الامتداد أو المحتوى
                         if (file.name.toLowerCase().endsWith('.xspf') || content.includes('<playlist')) {
                             newChs = parseXSPF(content);
                         } else {
@@ -1001,8 +1014,7 @@
             docClone.querySelector('#np-title span').innerText = 'لم يتم اختيار قناة';
             docClone.querySelector('#ch-count').innerText = '0';
             
-            // تصفير كل الخانات عشان تنزل فاضية
-            ['#i-name', '#i-url', '#i-logo', '#i-search', '#x-host', '#x-port', '#x-user', '#x-pass', '#l-url', '#s-url', '#s-mac', '#x-quick-link'].forEach(id => {
+            ['#i-name', '#i-url', '#i-logo', '#i-search', '#x-host', '#x-port', '#x-user', '#x-pass', '#l-url', '#s-url', '#s-mac', '#x-quick-link', '#i-direct-link'].forEach(id => {
                 const el = docClone.querySelector(id);
                 if(el) el.removeAttribute('value');
             });
@@ -1015,7 +1027,7 @@
             if(stalkerPanel) stalkerPanel.style.display = 'none';
 
             const wrapper = docClone.querySelector('#player-wrapper');
-            wrapper.innerHTML = '<video id="video-player" controls playsinline preload="auto"></video>';
+            wrapper.innerHTML = '<iframe id="website-player" allowfullscreen style="display:none; width:100%; height:100%; border:none; background:#fff; z-index: 10;"></iframe><video id="video-player" playsinline preload="auto"></video>';
 
             let htmlString = docClone.outerHTML;
             const jsonStr = JSON.stringify(channels);
@@ -1035,8 +1047,34 @@
             URL.revokeObjectURL(url);
         }
 
+        function playDirectLink() {
+            const url = document.getElementById('i-direct-link').value.trim();
+            if(!url) return alert("الرجاء إدخال الرابط أولاً!");
+            play(url, "تشغيل مباشر", null);
+        }
+
+        function playWebsite() {
+            const url = document.getElementById('i-direct-link').value.trim();
+            if(!url) return alert("الرجاء إدخال الرابط أولاً!");
+            
+            let safeUrl = url;
+            if (!safeUrl.startsWith('http')) safeUrl = 'https://' + safeUrl;
+
+            stopStream(); 
+            
+            const plyrContainer = document.querySelector('.plyr');
+            if(plyrContainer) plyrContainer.style.display = 'none';
+            
+            const iframe = document.getElementById('website-player');
+            if(iframe) {
+                iframe.style.display = 'block';
+                iframe.src = safeUrl;
+            }
+            domTitle.innerText = "🌐 عرض موقع";
+        }
+
         render();
 
     </script>
+
 </body></html>
-</html>
