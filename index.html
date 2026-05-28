@@ -3,11 +3,12 @@
 <html lang="ar" dir="rtl"><head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=1300">
-    <title>Nova Stream - Advanced Player</title>
+    <title> ْ</title>
     
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css">
     <script src="https://cdn.plyr.io/3.7.8/plyr.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
     
     <style>
         :is(iframe[src*='ads'], iframe[src*='doubleclick'], .adsbygoogle, [id*='google_ads'], [id*='taboola-'], .taboolaHeight, .taboola-placeholder, #top-ad, [id*='google-one-tap-iframe'], #amp_floatingAdDiv, #ez-content-blocker-container) {
@@ -205,7 +206,7 @@
         .folder-header {
             padding: 12px 15px;
             background: rgba(255, 255, 255, 0.02);
-            cursor: pointer;
+            cursor: grab;
             font-weight: bold;
             display: flex;
             justify-content: space-between;
@@ -213,27 +214,29 @@
             color: var(--accent);
             transition: 0.2s;
         }
+        .folder-header:active { cursor: grabbing; }
         .folder-header:hover { background: rgba(255, 255, 255, 0.06); }
         .folder-header.active { background: rgba(0, 210, 255, 0.1); }
         .folder-icon { transition: transform 0.3s; }
         .folder-header.active .folder-icon { transform: rotate(90deg); }
 
-        .folder-content { display: none; background: rgba(0, 0, 0, 0.15); }
+        .folder-content { display: none; background: rgba(0, 0, 0, 0.15); min-height: 10px; }
         .folder-content.open { display: block; }
 
         .channel-item {
             display: flex; align-items: center; justify-content: space-between;
             padding: 10px 15px 10px 15px; border-bottom: 1px solid rgba(255, 255, 255, 0.02);
-            transition: background 0.2s; cursor: pointer;
+            transition: background 0.2s; cursor: grab;
         }
 
+        .channel-item:active { cursor: grabbing; }
         .channel-item:hover { background: var(--bg-hover); }
         .channel-item.playing { background: rgba(0, 210, 255, 0.15); border-right: 4px solid var(--accent); }
 
         .channel-checkbox-wrapper { display: flex; align-items: center; padding-left: 10px; }
         .ch-checkbox { width: 16px; height: 16px; cursor: pointer; accent-color: var(--accent); }
 
-        .channel-info { display: flex; align-items: center; flex: 1; overflow: hidden; }
+        .channel-info { display: flex; align-items: center; flex: 1; overflow: hidden; pointer-events: auto; }
         .channel-thumb { width: 40px; height: 40px; border-radius: 8px; margin-left: 12px; object-fit: cover; background: #000; }
         .channel-name { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-main); }
 
@@ -319,6 +322,13 @@
             object-fit: cover;
         }
 
+        /* تنسيق الأشكال أثناء السحب */
+        .sortable-ghost {
+            opacity: 0.4;
+            background: rgba(0, 210, 255, 0.1);
+            border: 2px dashed var(--accent);
+        }
+
     </style>
 </head>
 <body class="">
@@ -332,7 +342,7 @@
         <div class="controls-panel" id="main-controls-panel" style="display: flex;">
             <div class="input-group">
                 <input type="text" id="i-name" placeholder="اسم القناة">
-                <input type="text" id="i-url" placeholder="رابط البث (m3u8/ts/xspf)">
+                <input type="text" id="i-url" placeholder="رابط البث (m3u8/ts/xspf/mp4)">
                 <input type="text" id="i-logo" placeholder="رابط اللوجو (اختياري)">
                 <input type="text" id="i-group" placeholder="المجلد (اختياري)">
                 <button class="btn btn-add" onclick="addChannel()">➕ إضافة</button>
@@ -444,19 +454,30 @@
                         📺 <span>لم يتم اختيار قناة</span>
                     </div>
                     <div class="player-actions">
-                        <button class="btn btn-link" onclick="playWebsite()">🌐  </button><button class="btn btn-add" onclick="playDirectLink()">▶️  </button><button class="btn-icon" onclick="toggleRotation()" title="تدوير الشاشة">🔃</button>
+                        <button class="btn btn-link" onclick="playWebsite()">🌐  </button><button class="btn btn-add" onclick="playDirectLink()">▶️  </button><button class="btn-icon" onclick="openExternalLink()" title="فتح خارجي في تاب جديدة">↗️</button><button class="btn-icon" onclick="toggleRotation()" title="تدوير الشاشة">🔃</button>
                         <button class="btn-icon" onclick="toggleCustomFullscreen()" title="ملء الشاشة">🔲</button>
                         <button class="btn-icon" onclick="playPrev()" title="القناة السابقة">⏮️</button>
+                        <button class="btn-icon" id="auto-flip-btn" onclick="toggleAutoFlip()" title="تقليب تلقائي">⏱️</button>
                         <button class="btn-icon" onclick="playNext()" title="القناة التالية">⏭️</button>
                         <button class="btn-icon" onclick="toggleCinemaMode()" title="وضع السينما">🎦</button>
                         <button class="btn-icon" onclick="reloadStream()" title="تحديث البث">🔄</button>
-                        <button class="btn-icon" onclick="stopStream()" title="إيقاف">🛑</button>
+                        <button class="btn-icon" onclick="stopStream()" title="إيقاف / إلغاء">❌</button>
                     </div>
                 </div>
 
-                <div id="quality-container" style="display: none; justify-content: space-between; align-items: center; background: rgba(0, 0, 0, 0.2); padding: 10px; border-radius: 8px; margin-bottom: 15px; border: 1px solid rgba(255, 255, 255, 0.05);">
-                    <span id="current-quality" style="color: var(--accent); font-weight: bold; font-size: 14px;">📡 الجودة: 0p</span>
-                    <select id="quality-selector" onchange="changeQuality(this.value)" style="padding: 6px 12px; border-radius: 6px; background: var(--bg-panel); color: white; border: 1px solid rgba(255,255,255,0.1); outline: none; cursor: pointer;"><option value="-1">تلقائي</option></select>
+                <div id="stream-settings-container" style="display: none; flex-wrap: wrap; gap: 15px; justify-content: space-between; align-items: center; background: rgba(0, 0, 0, 0.2); padding: 10px; border-radius: 8px; margin-bottom: 15px; border: 1px solid rgba(255, 255, 255, 0.05);">
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <span id="current-quality" style="color: var(--accent); font-weight: bold; font-size: 14px;">📡 الجودة: 360p</span>
+                        <select id="quality-selector" onchange="changeQuality(this.value)" style="padding: 6px 12px; border-radius: 6px; background: var(--bg-panel); color: white; border: 1px solid rgba(255,255,255,0.1); outline: none; cursor: pointer;"><option value="-1">تلقائي</option><option value="0">360p</option><option value="1">480p</option><option value="2">720p</option><option value="3">1080p</option></select>
+                    </div>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <span style="color: var(--warning); font-weight: bold; font-size: 14px;">🎵 الصوت:</span>
+                        <select id="audio-selector" onchange="changeAudio(this.value)" style="padding: 6px 12px; border-radius: 6px; background: var(--bg-panel); color: white; border: 1px solid rgba(255,255,255,0.1); outline: none; cursor: pointer;"><option value="-1">الافتراضي</option></select>
+                    </div>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <span style="color: var(--success); font-weight: bold; font-size: 14px;">💬 الترجمة:</span>
+                        <select id="subtitle-selector" onchange="changeSubtitle(this.value)" style="padding: 6px 12px; border-radius: 6px; background: var(--bg-panel); color: white; border: 1px solid rgba(255,255,255,0.1); outline: none; cursor: pointer;"><option value="-1">إيقاف</option><option value="0">caption_1</option></select>
+                    </div>
                 </div>
 
                 <div class="player-wrapper" id="player-wrapper"><iframe id="website-player" sandbox="allow-scripts allow-same-origin allow-forms" allowfullscreen="" style="display:none; width:100%; height:100%; border:none; background:#fff; z-index: 10;"></iframe><video id="video-player" autoplay="" playsinline="" preload="auto"></video></div>
@@ -480,6 +501,8 @@
         let currentChannelIndex = -1;
         let isCinemaMode = false;
         let isRotated = false;
+        let autoFlipInterval = null;
+        let isAutoFlipActive = false;
 
         let channels = [];
         let savedItems = [];
@@ -491,10 +514,10 @@
         
         if (injected && injected.length > 0) channels = injected;
 
-        const injectedSaved = /*[INJECT_SAVED]*/[]/*[/INJECT_SAVED]*/;
+        const injectedSaved = /*[INJECT_SAVED]*/[{"name":"wwe","url":"https://dpv6ceilvhyrw.cloudfront.net/playlist.m3u8","type":"video"}]/*[/INJECT_SAVED]*/;
         if (injectedSaved && injectedSaved.length > 0) savedItems = injectedSaved;
 
-        const injectedFolders = /*[INJECT_FOLDERS]*/["bn 2","bn3","bn4","bn 5","bn5","bn 6","sky 7","wwe","on sport","Salsa","live kora","bn 1"]/*[/INJECT_FOLDERS]*/;
+        const injectedFolders = /*[INJECT_FOLDERS]*/[]/*[/INJECT_FOLDERS]*/;
         if (injectedFolders && injectedFolders.length > 0) customFolders = injectedFolders;
 
         function toggleMainPanel() {
@@ -563,6 +586,33 @@
         function toggleCinemaMode() {
             isCinemaMode = !isCinemaMode;
             document.body.classList.toggle('cinema-mode', isCinemaMode);
+        }
+
+        function toggleAutoFlip() {
+            const btn = document.getElementById('auto-flip-btn');
+            if (isAutoFlipActive) {
+                clearInterval(autoFlipInterval);
+                isAutoFlipActive = false;
+                btn.style.background = '';
+                btn.style.color = '';
+                alert("تم إيقاف التقليب التلقائي.");
+            } else {
+                let secs = prompt("أدخل عدد الثواني للتقليب التلقائي (من 20 إلى 60):", "30");
+                if (secs === null) return;
+                secs = parseInt(secs);
+                if (isNaN(secs) || secs < 20 || secs > 60) {
+                    alert("الرجاء إدخال رقم صحيح بين 20 و 60 ثانية يا هندسة!");
+                    return;
+                }
+                isAutoFlipActive = true;
+                btn.style.background = 'rgba(46, 213, 115, 0.4)';
+                btn.style.color = 'var(--success)';
+                alert(`تم تفعيل التقليب التلقائي كل ${secs} ثانية.`);
+                
+                autoFlipInterval = setInterval(() => {
+                    playNext();
+                }, secs * 1000);
+            }
         }
 
         function playNext() {
@@ -660,8 +710,10 @@
                         <span class="channel-name">${item.name}</span>
                     </div>
                     <div class="channel-actions">
+                        <button class="btn-icon" style="padding:2px 5px; font-size:12px; background: transparent; color: #3498db; margin: 0;" onclick="playSavedAs(${idx}, 'website', event)" title="تشغيل كموقع">🌐</button>
+                        <button class="btn-icon" style="padding:2px 5px; font-size:12px; background: transparent; color: var(--success); margin: 0;" onclick="playSavedAs(${idx}, 'video', event)" title="تشغيل كفيديو">▶️</button>
                         <button class="btn-copy" onclick="copyLink('${item.url}', event)">🔗</button>
-                        <button class="btn-delete" onclick="deleteSaved(${idx}, event)">×</button>
+                        <button class="btn-delete" onclick="deleteSaved(${idx}, event)">❌</button>
                     </div>`;
                 list.appendChild(li);
             });
@@ -671,6 +723,14 @@
             const item = savedItems[idx];
             document.getElementById('i-direct-link').value = item.url;
             if(item.type === 'video') playDirectLink(); else playWebsite();
+        }
+
+        function playSavedAs(idx, mode, e) {
+            e.stopPropagation();
+            savedItems[idx].type = mode;
+            renderSaved();
+            document.getElementById('i-direct-link').value = savedItems[idx].url;
+            if(mode === 'video') playDirectLink(); else playWebsite();
         }
 
         function deleteSaved(idx, e) { e.stopPropagation(); if(confirm("حذف؟")) { savedItems.splice(idx, 1); renderSaved(); } }
@@ -855,7 +915,6 @@
             }
         }
 
-        // إضافة دالة تغيير اسم المجلد
         function renameFolder(oldName, e) {
             e.stopPropagation();
             const newName = prompt("أدخل الاسم الجديد للمجلد:", oldName);
@@ -882,7 +941,6 @@
             }
         }
 
-        // إضافة دالة إضافة القنوات مباشرة جوه المجلد
         function addLinkToFolder(folderName, e) {
             e.stopPropagation();
             const chName = prompt(`إضافة قناة/رابط جديد في مجلد "${folderName}"\n\nأدخل اسم القناة أو الرابط:`);
@@ -917,17 +975,57 @@
                 render();
             }
         }
+        
+        function setFolderMode(g, mode, e) {
+            e.stopPropagation();
+            const modeText = mode === 'website' ? 'كموقع 🌐' : 'كفيديو ▶️';
+            if(confirm(`هل تريد تعيين التشغيل ${modeText} بشكل افتراضي لكل القنوات في مجلد "${g}"؟`)) {
+                let count = 0;
+                channels.forEach(ch => {
+                    if ((ch.group || 'عامة') === g) {
+                        ch.playbackMode = mode;
+                        count++;
+                    }
+                });
+                alert(`تمام! تم تعيين ${count} قناة للتشغيل ${modeText}.`);
+            }
+        }
+
+        window.playChannelAs = function(idx, mode, e) {
+            e.stopPropagation();
+            if (channels[idx]) {
+                channels[idx].playbackMode = mode;
+                let el = null;
+                document.querySelectorAll('.channel-item').forEach(item => {
+                    if (parseInt(item.getAttribute('data-idx')) === idx) {
+                        el = item.querySelector('.channel-info');
+                    }
+                });
+                play(channels[idx].url, channels[idx].name, el, idx);
+            }
+        };
 
         function render() {
+            // حفظ حالة الفولدرات المفتوحة عشان متتقفلش بعد السحب والإفلات أو الإضافة
+            const openFolders = new Set();
+            document.querySelectorAll('.folder-content.open').forEach(ul => {
+                const folderName = ul.parentElement.getAttribute('data-folder');
+                if(folderName) openFolders.add(folderName);
+            });
+
+            // التأكد إن كل الفولدرات موجودة بالترتيب
+            channels.forEach(ch => {
+                const g = ch.group || 'عامة';
+                if (!customFolders.includes(g)) customFolders.push(g);
+            });
+
             domList.innerHTML = ''; domCount.innerText = channels.length;
             
             const groups = {};
-            
             customFolders.forEach(f => groups[f] = []);
             
             channels.forEach((ch, idx) => { 
                 const g = ch.group || 'عامة'; 
-                if (!groups[g]) groups[g] = []; 
                 groups[g].push({ ...ch, originalIndex: idx }); 
             });
 
@@ -939,14 +1037,22 @@
             const defaultImg = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjOGI5ZWIwIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHJlY3QgeD0iMiIgeT0iNyIgd2lkdGg9IjIwIiBoZWlnaHQ9IjE1IiByeD0iMiIgcnk9IjIiPjwvcmVjdD48cG9seWxpbmUgcG9pbnRzPSIxNyAyIDEyIDcgNyAyIj48L3BvbHlsaW5lPjwvc3ZnPg==';
 
             for (const g in groups) {
-                const f = document.createElement('li'); f.className = 'folder-container';
+                const safeFolderData = g; // لتجنب مشاكل الـ quotes في الـ attribute
+                const f = document.createElement('li'); 
+                f.className = 'folder-container';
+                f.setAttribute('data-folder', safeFolderData);
+                
+                const headerActive = openFolders.has(g) ? ' active' : '';
+                
                 f.innerHTML = `
-                    <div class="folder-header">
+                    <div class="folder-header${headerActive}">
                         <div style="display:flex;align-items:center;gap:8px;">
                             <span class="folder-icon">▶</span>
                             <span>📁 ${g}</span>
                         </div>
                         <div style="display:flex;align-items:center;gap:8px;">
+                            <button class="btn-icon" style="padding:2px 6px; font-size:12px; background: transparent; color: #3498db; margin: 0;" onclick="setFolderMode('${g.replace(/'/g, "\\'")}', 'website', event)" title="تشغيل الكل كموقع">🌐</button>
+                            <button class="btn-icon" style="padding:2px 6px; font-size:12px; background: transparent; color: var(--accent); margin: 0;" onclick="setFolderMode('${g.replace(/'/g, "\\'")}', 'video', event)" title="تشغيل الكل كفيديو">▶️</button>
                             <button class="btn-icon" style="padding:2px 6px; font-size:12px; background: transparent; color: var(--success); margin: 0;" onclick="addLinkToFolder('${g.replace(/'/g, "\\'")}', event)" title="إضافة رابط داخل هذا المجلد">➕</button>
                             <button class="btn-icon" style="padding:2px 6px; font-size:12px; background: transparent; color: var(--warning); margin: 0;" onclick="renameFolder('${g.replace(/'/g, "\\'")}', event)" title="تغيير اسم المجلد">✏️</button>
                             <button class="btn-icon" style="padding:2px 6px; font-size:12px; background: transparent; color: var(--danger); margin: 0;" onclick="deleteFolder('${g.replace(/'/g, "\\'")}', event)" title="حذف المجلد">🗑️</button>
@@ -954,20 +1060,31 @@
                         </div>
                     </div>`;
                 
-                const ul = document.createElement('ul'); ul.className = 'folder-content channel-list';
+                const openClass = openFolders.has(g) ? ' open' : '';
+                const ul = document.createElement('ul'); 
+                ul.className = 'folder-content channel-list' + openClass;
                 
                 if (groups[g].length === 0) {
-                    ul.innerHTML = '<li style="padding: 10px; text-align:center; color: var(--text-muted); font-size: 12px;">المجلد فارغ</li>';
+                    ul.innerHTML = '<li class="empty-placeholder" style="padding: 10px; text-align:center; color: var(--text-muted); font-size: 12px;">المجلد فارغ</li>';
                 } else {
                     groups[g].forEach(ch => {
                         const img = ch.logo || defaultImg;
                         const safeName = (ch.name || 'قناة').replace(/'/g, "\\'");
-                        const li = document.createElement('li'); li.className = 'channel-item';
+                        const li = document.createElement('li'); 
+                        li.className = 'channel-item';
+                        li.setAttribute('data-idx', ch.originalIndex);
+                        
                         if (currentChannelIndex === ch.originalIndex) li.classList.add('playing');
                         
                         li.innerHTML = `<div class="channel-checkbox-wrapper"><input type="checkbox" class="ch-checkbox" value="${ch.originalIndex}" onclick="event.stopPropagation()"></div>
                             <div class="channel-info" onclick="play('${ch.url}', '${safeName}', this, ${ch.originalIndex})"><img src="${img}" class="channel-thumb" onerror="this.src='${defaultImg}'"><span class="channel-name">${ch.name || 'قناة'}</span></div>
-                            <div class="channel-actions"><button class="btn-edit" onclick="editCh(${ch.originalIndex}, event)">✏️</button><button class="btn-copy" onclick="copyLink('${ch.url}', event)">🔗</button><button class="btn-delete" onclick="removeCh(${ch.originalIndex}, event)">×</button></div>`;
+                            <div class="channel-actions">
+                                <button class="btn-icon" style="padding:2px 5px; font-size:12px; background: transparent; color: #3498db; margin: 0;" onclick="playChannelAs(${ch.originalIndex}, 'website', event)" title="تشغيل كموقع">🌐</button>
+                                <button class="btn-icon" style="padding:2px 5px; font-size:12px; background: transparent; color: var(--success); margin: 0;" onclick="playChannelAs(${ch.originalIndex}, 'video', event)" title="تشغيل كفيديو">▶️</button>
+                                <button class="btn-edit" onclick="editCh(${ch.originalIndex}, event)">✏️</button>
+                                <button class="btn-copy" onclick="copyLink('${ch.url}', event)">🔗</button>
+                                <button class="btn-delete" onclick="removeCh(${ch.originalIndex}, event)">❌</button>
+                            </div>`;
                         ul.appendChild(li);
                     });
                 }
@@ -980,6 +1097,58 @@
                 };
                 domList.appendChild(f);
             }
+
+            // تفعيل السحب والإفلات للفولدرات
+            if (window.folderSortable) window.folderSortable.destroy();
+            window.folderSortable = new Sortable(domList, {
+                group: 'folders',
+                handle: '.folder-header',
+                animation: 150,
+                ghostClass: 'sortable-ghost',
+                onEnd: syncStateFromDOM
+            });
+
+            // تفعيل السحب والإفلات للقنوات جوه الفولدرات
+            document.querySelectorAll('.folder-content').forEach(ul => {
+                new Sortable(ul, {
+                    group: 'channels',
+                    filter: '.empty-placeholder', // ميتسحبش
+                    animation: 150,
+                    fallbackOnBody: true,
+                    swapThreshold: 0.65,
+                    ghostClass: 'sortable-ghost',
+                    onEnd: syncStateFromDOM
+                });
+            });
+        }
+
+        // دالة المزامنة بعد ما تسحب أي حاجة
+        function syncStateFromDOM() {
+            const newChannels = [];
+            const newFolders = [];
+            document.querySelectorAll('#ch-list > .folder-container').forEach(folder => {
+                const groupName = folder.getAttribute('data-folder');
+                newFolders.push(groupName);
+                
+                folder.querySelectorAll('.channel-item').forEach(item => {
+                    const idx = parseInt(item.getAttribute('data-idx'));
+                    const ch = channels[idx];
+                    if (ch) {
+                        newChannels.push({
+                            name: ch.name,
+                            url: ch.url,
+                            logo: ch.logo,
+                            group: groupName, // هياخد اسم الفولدر الجديد لو اتنقل
+                            playbackMode: ch.playbackMode
+                        });
+                    }
+                });
+            });
+            channels = newChannels;
+            customFolders = newFolders;
+            if (currentUrl) currentChannelIndex = channels.findIndex(c => c.url === currentUrl);
+            else currentChannelIndex = -1;
+            render();
         }
 
         function toggleLinkPanel() {
@@ -1040,7 +1209,7 @@
                 let newChs = (content.includes('<playlist') || urlInput.endsWith('.xspf')) ? parseXSPF(content) : parseM3U(content);
                 
                 if (newChs.length === 0) {
-                    if(urlInput.includes('.m3u8') || urlInput.includes('.ts')) {
+                    if(urlInput.startsWith('http')) {
                         mergeChannels([{ name: 'قناة من الرابط', url: urlInput, logo: '', group: 'قنوات عامة' }]);
                         alert("تم إضافة القناة!"); toggleLinkPanel(); document.getElementById('l-url').value = '';
                     } else alert("الرابط مش شغال!");
@@ -1237,6 +1406,9 @@
             const extControls = docClone.querySelector('#external-controls');
             if (extControls) extControls.innerHTML = '';
 
+            const autoFlipBtnExport = docClone.querySelector('#auto-flip-btn');
+            if (autoFlipBtnExport) { autoFlipBtnExport.style.background = ''; autoFlipBtnExport.style.color = ''; }
+
             ['#i-name', '#i-url', '#i-logo', '#i-group', '#i-search', '#x-host', '#x-port', '#x-user', '#x-pass', '#l-url', '#s-url', '#s-mac', '#x-quick-link', '#i-direct-link', '#bulk-input'].forEach(id => {
                 const el = docClone.querySelector(id);
                 if(el) { if (el.tagName === 'TEXTAREA') el.innerHTML = ''; else el.removeAttribute('value'); }
@@ -1262,27 +1434,124 @@
             document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
         }
 
-        function setupQualitySelector(levels) {
-            const c = document.getElementById('quality-container'), s = document.getElementById('quality-selector');
-            s.innerHTML = '<option value="-1">تلقائي</option>';
+        function setupStreamSelectors() {
+            const c = document.getElementById('stream-settings-container');
+            const qSel = document.getElementById('quality-selector');
+            const aSel = document.getElementById('audio-selector');
+            const sSel = document.getElementById('subtitle-selector');
+            
+            if (!hlsInstance) { c.style.display = 'none'; return; }
+            
+            let hasOptions = false;
+
+            // Quality
+            const levels = hlsInstance.levels;
+            qSel.innerHTML = '<option value="-1">تلقائي</option>';
             if (levels && levels.length > 1) {
-                c.style.display = 'flex';
-                levels.forEach((l, i) => { if(l.height){ const o = document.createElement('option'); o.value = i; o.text = l.height+'p'; s.appendChild(o); } });
-            } else c.style.display = 'none';
+                hasOptions = true;
+                levels.forEach((l, i) => { 
+                    if(l.height){ 
+                        const o = document.createElement('option'); o.value = i; o.text = l.height+'p'; qSel.appendChild(o); 
+                    } 
+                });
+                qSel.value = hlsInstance.currentLevel;
+            }
+
+            // Audio
+            const audioTracks = hlsInstance.audioTracks;
+            aSel.innerHTML = '';
+            if (audioTracks && audioTracks.length > 1) {
+                hasOptions = true;
+                audioTracks.forEach((t, i) => { 
+                    const o = document.createElement('option'); o.value = i; 
+                    o.text = t.name || t.language || `صوت ${i+1}`; aSel.appendChild(o); 
+                });
+                aSel.value = hlsInstance.audioTrack;
+            } else {
+                aSel.innerHTML = '<option value="-1">الافتراضي</option>';
+            }
+
+            // Subtitle
+            const subTracks = hlsInstance.subtitleTracks;
+            sSel.innerHTML = '<option value="-1">إيقاف</option>';
+            if (subTracks && subTracks.length > 0) {
+                hasOptions = true;
+                subTracks.forEach((t, i) => { 
+                    const o = document.createElement('option'); o.value = i; 
+                    o.text = t.name || t.language || `ترجمة ${i+1}`; sSel.appendChild(o); 
+                });
+                sSel.value = hlsInstance.subtitleTrack;
+            }
+
+            c.style.display = hasOptions ? 'flex' : 'none';
         }
 
-        window.changeQuality = (i) => { if(hlsInstance) hlsInstance.currentLevel = parseInt(i); };
+        window.changeQuality = (i) => { if(hlsInstance) { hlsInstance.currentLevel = parseInt(i); hlsInstance.nextLevel = parseInt(i); } };
+        window.changeAudio = (i) => { if(hlsInstance) hlsInstance.audioTrack = parseInt(i); };
+        window.changeSubtitle = (i) => { if(hlsInstance) hlsInstance.subtitleTrack = parseInt(i); };
+
+        function playDirectLink() { 
+            const u = document.getElementById('i-direct-link').value; 
+            if(u) {
+                if (currentChannelIndex !== -1 && channels[currentChannelIndex] && channels[currentChannelIndex].url === u) {
+                    channels[currentChannelIndex].playbackMode = 'video';
+                }
+                play(u, currentName || "تشغيل مباشر", null, currentChannelIndex); 
+            } 
+        }
+        
+        function playWebsite() { 
+            const u = document.getElementById('i-direct-link').value; 
+            if(u) { 
+                if (currentChannelIndex !== -1 && channels[currentChannelIndex] && channels[currentChannelIndex].url === u) {
+                    channels[currentChannelIndex].playbackMode = 'website';
+                }
+                stopStream(); 
+                document.querySelector('.player-wrapper .plyr').style.setProperty('display', 'none', 'important'); 
+                document.getElementById('external-controls').style.display = 'none';
+                const ifr=document.getElementById('website-player'); 
+                ifr.style.display='block'; 
+                let safeUrl = u.startsWith('http') ? u : 'https://' + u; 
+                ifr.src=safeUrl; 
+                domTitle.innerText = currentName || "🌐 عرض موقع"; 
+            } 
+        }
+
+        function openExternalLink() {
+            const u = document.getElementById('i-direct-link').value;
+            if (u) {
+                let safeUrl = u.startsWith('http') ? u : 'https://' + u;
+                window.open(safeUrl, '_blank');
+            } else {
+                alert("يا هندسة مفيش أي رابط شغال دلوقتي عشان تفتحه!");
+            }
+        }
 
         async function play(url, name, el, idx = -1) {
+            currentUrl = url; currentName = name; currentChannelIndex = idx;
+            document.getElementById('i-direct-link').value = url;
+
+            if (idx !== -1 && channels[idx] && channels[idx].playbackMode === 'website') {
+                stopStream(true); 
+                document.querySelector('.player-wrapper .plyr').style.setProperty('display', 'none', 'important'); 
+                document.getElementById('external-controls').style.display = 'none';
+                const ifr=document.getElementById('website-player'); 
+                ifr.style.display='block'; 
+                let safeUrl = url.startsWith('http') ? url : 'https://' + url; 
+                ifr.src=safeUrl; 
+                domTitle.innerText = name;
+                document.querySelectorAll('.channel-item').forEach(i => i.classList.remove('playing'));
+                if (el) el.parentElement.classList.add('playing');
+                return;
+            }
+
             const ifr = document.getElementById('website-player'); ifr.style.display = 'none'; ifr.src = '';
             
             document.querySelector('.player-wrapper .plyr').style.setProperty('display', 'block', 'important');
             document.getElementById('external-controls').style.display = 'block';
 
-            currentUrl = url; currentName = name; currentChannelIndex = idx;
-            document.getElementById('i-direct-link').value = url;
             domTitle.innerText = "⏳ جاري الاتصال...";
-            document.getElementById('quality-container').style.display = 'none';
+            document.getElementById('stream-settings-container').style.display = 'none';
             document.querySelectorAll('.channel-item').forEach(i => i.classList.remove('playing'));
             if (el) el.parentElement.classList.add('playing');
             const vid = document.getElementById('video-player');
@@ -1298,46 +1567,66 @@
                     else throw new Error("لا يمكن توليد الرابط");
                 } catch(e) { domTitle.innerText = "❌ فشل رابط ستالكر"; return; }
             }
-            if (streamUrl.includes('.ts')) streamUrl = streamUrl.replace('.ts', '.m3u8');
-            else if (!streamUrl.includes('.m3u8') && !streamUrl.includes('action=create_link')) streamUrl += ".m3u8";
-
-            if (Hls.isSupported()) {
+            if (streamUrl.endsWith('.ts')) streamUrl = streamUrl.replace(/\.ts(\?.*)?$/, '.m3u8$1');
+            
+            const isVideoExt = streamUrl.match(/\.(mp4|mkv|webm|ogg|avi|flv|mov)$/i);
+            
+            if (Hls.isSupported() && !isVideoExt) {
                 hlsInstance = new Hls(); hlsInstance.loadSource(streamUrl); hlsInstance.attachMedia(vid);
-                hlsInstance.on(Hls.Events.MANIFEST_PARSED, (e, d) => { plyrInstance.play(); setupQualitySelector(d.levels); });
-                hlsInstance.on(Hls.Events.LEVEL_SWITCHED, (e, d) => { const l = hlsInstance.levels[d.level]; if(l) document.getElementById('current-quality').innerText = `📡 الجودة: ${l.height}p`; else document.getElementById('current-quality').innerText = `📡 الجودة الحالية: تلقائي`; });
+                hlsInstance.on(Hls.Events.MANIFEST_PARSED, (e, d) => { 
+                    plyrInstance.play(); 
+                    setupStreamSelectors(); 
+                });
+                hlsInstance.on(Hls.Events.AUDIO_TRACKS_UPDATED, () => setupStreamSelectors());
+                hlsInstance.on(Hls.Events.SUBTITLE_TRACKS_UPDATED, () => setupStreamSelectors());
+                hlsInstance.on(Hls.Events.LEVEL_SWITCHED, (e, d) => { 
+                    const l = hlsInstance.levels[d.level]; 
+                    if(l && l.height) {
+                        document.getElementById('current-quality').innerText = `📡 الجودة: ${l.height}p`; 
+                    } else {
+                        document.getElementById('current-quality').innerText = `📡 الجودة: تلقائي`; 
+                    }
+                    const qSel = document.getElementById('quality-selector');
+                    if(qSel) qSel.value = d.level;
+                });
                 hlsInstance.on(Hls.Events.ERROR, function (event, data) {
                     if (data.fatal) {
                         if(data.type === Hls.ErrorTypes.NETWORK_ERROR) hlsInstance.startLoad();
                         else if(data.type === Hls.ErrorTypes.MEDIA_ERROR) hlsInstance.recoverMediaError();
-                        else { hlsInstance.destroy(); domTitle.innerText = "❌ البث متوقف"; document.getElementById('quality-container').style.display = 'none'; }
+                        else { 
+                            hlsInstance.destroy(); 
+                            vid.src = streamUrl;
+                            plyrInstance.play().catch(err => {
+                                domTitle.innerText = "❌ البث متوقف أو الرابط غير مدعوم"; 
+                                document.getElementById('stream-settings-container').style.display = 'none';
+                            });
+                        }
                     }
                 });
             } else { vid.src = streamUrl; plyrInstance.play(); }
             domTitle.innerText = name;
         }
 
-        function stopStream() { 
+        function stopStream(isInternal = false) { 
             if (hlsInstance) hlsInstance.destroy(); 
             const v = document.getElementById('video-player'); v.pause(); v.removeAttribute('src'); v.load(); 
+            
+            const ifr = document.getElementById('website-player'); 
+            ifr.src = ''; 
+            ifr.style.display = 'none';
+            
+            document.querySelector('.player-wrapper .plyr').style.setProperty('display', 'block', 'important'); 
+            document.getElementById('external-controls').style.display = 'block';
+
             domTitle.innerText = "لم يتم اختيار قناة"; 
-            document.getElementById('quality-container').style.display = 'none'; 
-        }
-        
-        function addChannel() { const n = iName.value, u = iUrl.value; if(n && u) { channels.unshift({name:n, url:u, logo: iLogo.value, group: iGroup.value || 'عامة'}); render(); iName.value=''; iUrl.value=''; iLogo.value=''; iGroup.value=''; } }
-        function playDirectLink() { const u = document.getElementById('i-direct-link').value; if(u) play(u, "تشغيل مباشر", null); }
-        
-        function playWebsite() { 
-            const u = document.getElementById('i-direct-link').value; 
-            if(u) { 
-                stopStream(); 
-                document.querySelector('.player-wrapper .plyr').style.setProperty('display', 'none', 'important'); 
-                document.getElementById('external-controls').style.display = 'none';
-                const ifr=document.getElementById('website-player'); 
-                ifr.style.display='block'; 
-                let safeUrl = u.startsWith('http') ? u : 'https://' + u; 
-                ifr.src=safeUrl; 
-                domTitle.innerText="🌐 عرض موقع"; 
-            } 
+            document.getElementById('stream-settings-container').style.display = 'none'; 
+            
+            if (!isInternal && isAutoFlipActive) {
+                clearInterval(autoFlipInterval);
+                isAutoFlipActive = false;
+                const btn = document.getElementById('auto-flip-btn');
+                if (btn) { btn.style.background = ''; btn.style.color = ''; }
+            }
         }
 
         render(); renderSaved();
