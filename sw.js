@@ -1,4 +1,4 @@
-const CACHE_NAME = 'liptv app-v2';
+const CACHE_NAME = 'iotv app-v2';
 const urlsToCache = [ './', './index.html', './icon-192.png', './icon-512.png', './manifest.json' ];
 
 self.addEventListener('install', event => {

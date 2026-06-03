@@ -1,6 +1,6 @@
 {
-  "name": "lIPTV App",
-  "short_name": "IPTV",
+  "name": "iotv App",
+  "short_name": "iotv App",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#ffffff",
